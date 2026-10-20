@@ -1,0 +1,191 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/register/index",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/wardrobe/index",
+      "style": {
+        "navigationBarTitleText": "我的衣柜"
+      }
+    },
+    {
+      "path": "pages/pending/index",
+      "style": {
+        "navigationBarTitleText": "未入柜"
+      }
+    },
+    {
+      "path": "pages/outfits/index",
+      "style": {
+        "navigationBarTitleText": "组合台"
+      }
+    },
+    {
+      "path": "pages/ootd/index",
+      "style": {
+        "navigationBarTitleText": "OOTD 试穿"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "pkg-closet",
+      "pages": [
+        {
+          "path": "garment/index",
+          "style": {
+            "navigationBarTitleText": "衣物详情"
+          }
+        },
+        {
+          "path": "add/index",
+          "style": {
+            "navigationBarTitleText": "添加衣物"
+          }
+        },
+        {
+          "path": "batch/index",
+          "style": {
+            "navigationBarTitleText": "批次"
+          }
+        },
+        {
+          "path": "tasks/index",
+          "style": {
+            "navigationBarTitleText": "处理中心"
+          }
+        },
+        {
+          "path": "trash/index",
+          "style": {
+            "navigationBarTitleText": "回收站"
+          }
+        },
+        {
+          "path": "help/index",
+          "style": {
+            "navigationBarTitleText": "帮助"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkg-outfit",
+      "pages": [
+        {
+          "path": "workspace/index",
+          "style": {
+            "navigationBarTitleText": "搭配画板"
+          }
+        },
+        {
+          "path": "assistant/index",
+          "style": {
+            "navigationBarTitleText": "鱼搭助手"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pkg-admin",
+      "pages": [
+        {
+          "path": "users/index",
+          "style": {
+            "navigationBarTitleText": "用户管理"
+          }
+        },
+        {
+          "path": "processing/index",
+          "style": {
+            "navigationBarTitleText": "处理监控"
+          }
+        },
+        {
+          "path": "templates/index",
+          "style": {
+            "navigationBarTitleText": "模板审核"
+          }
+        },
+        {
+          "path": "ootd-samples/index",
+          "style": {
+            "navigationBarTitleText": "OOTD 样本"
+          }
+        }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/wardrobe/index": {
+      "network": "all",
+      "packages": [
+        "pkg-closet"
+      ]
+    },
+    "pages/outfits/index": {
+      "network": "all",
+      "packages": [
+        "pkg-outfit"
+      ]
+    }
+  },
+  "tabBar": {
+    "color": "#858a97",
+    "selectedColor": "#1f5c45",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/wardrobe/index",
+        "text": "我的衣柜"
+      },
+      {
+        "pagePath": "pages/pending/index",
+        "text": "未入柜"
+      },
+      {
+        "pagePath": "pages/outfits/index",
+        "text": "组合台"
+      },
+      {
+        "pagePath": "pages/ootd/index",
+        "text": "OOTD"
+      },
+      {
+        "pagePath": "pages/settings/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "鱼搭",
+    "navigationBarBackgroundColor": "#f7f8fa",
+    "backgroundColor": "#f7f8fa"
+  }
+}

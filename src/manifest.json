@@ -1,0 +1,19 @@
+{
+  "name": "鱼搭",
+  "appid": "",
+  "description": "鱼搭智能衣柜微信小程序",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "",
+    "setting": { "urlCheck": false, "es6": true, "minified": true },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents",
+    "optimization": { "subPackages": true },
+    "permission": {},
+    "requiredPrivateInfos": []
+  },
+  "h5": { "router": { "mode": "hash" } },
+  "vueVersion": "3"
+}
