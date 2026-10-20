@@ -1,14 +1,14 @@
-/* Same values as ../smart-closet/src/style.css :root (light theme). */
-$ink: #25262b;
-$muted: #666b76;
-$muted-subtle: #858a97;
-$line: #e8e9ee;
-$accent: #1f5c45;
-$accent-strong: #16432f;
-$accent-soft: #eef6f1;
-$surface: #fff;
-$surface-alt: #f5f6f8;
-$paper: #f7f8fa;
+/* Light values from ../smart-closet/src/style.css :root. The colours read CSS variables that the dark theme overrides per page (see stores/theme.ts). */
+$ink: var(--yd-ink, #25262b);
+$muted: var(--yd-muted, #666b76);
+$muted-subtle: var(--yd-muted-subtle, #858a97);
+$line: var(--yd-line, #e8e9ee);
+$accent: var(--yd-accent, #1f5c45);
+$accent-strong: var(--yd-accent-strong, #16432f);
+$accent-soft: var(--yd-accent-soft, #eef6f1);
+$surface: var(--yd-surface, #fff);
+$surface-alt: var(--yd-surface-alt, #f5f6f8);
+$paper: var(--yd-paper, #f7f8fa);
 $success: #1f8a6e;
 $warning: #956516;
 $danger: #bd4b4b;

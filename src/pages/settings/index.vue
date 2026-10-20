@@ -6,6 +6,7 @@ import { useClosetStore } from '../../stores/closet'
 import { useThemeStore } from '../../stores/theme'
 import { usePreferencesStore } from '../../stores/preferences'
 import { soundEnabled, toggleSound } from '../../services/sound'
+import { useTabQuery } from '../../services/tab-route'
 import { closetApi } from '../../services/api'
 import { serverBuild, webBuild } from '../../services/version'
 import { formatVersion } from '../../domain/app-version'
@@ -15,6 +16,8 @@ import AssistantSection from '../../components/me/AssistantSection.vue'
 import StyleSection from '../../components/me/StyleSection.vue'
 import TidySection from '../../components/me/TidySection.vue'
 import RenderSupport from '../../components/me/RenderSupport.vue'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle, minimal } = useAppearance()
 const closet = useClosetStore(), theme = useThemeStore(), preferences = usePreferencesStore(), toast = useToast(), message = useMessage()
 const forced = ref(false), section = ref(''), serverVersion = ref('读取中…'), quota = ref<Awaited<ReturnType<typeof closetApi.quota>> | null>(null), quotaError = ref('')
 const firstLogin = computed(() => forced.value || Boolean(closet.user?.mustChangePassword))
@@ -41,10 +44,10 @@ onBackPress(() => firstLogin.value)
 onLoad(query => { forced.value = query?.firstLogin === '1'; section.value = String(query?.section || ''); syncGuard() })
 onShow(async () => {
   await closet.ensureUser(); if (!closet.user) { uni.reLaunch({ url: '/pages/login/index' }); return }
-  const requested = uni.getStorageSync('me.settings.section'); if (requested) { section.value = requested; uni.removeStorageSync('me.settings.section') }
   syncGuard(); if (portable.value && ['account', 'portable'].includes(section.value) && !firstLogin.value) section.value = ''
   const server = await serverBuild(); serverVersion.value = server ? formatVersion(server) : '无法连接'
 })
+useTabQuery('settings', query => { if (query.section && !firstLogin.value) select(query.section) })
 onUnload(releaseGuard)
 async function loadQuota() { quotaError.value = ''; try { quota.value = await closetApi.quota() } catch (e) { quotaError.value = e instanceof Error ? e.message : '无法加载额度。' } }
 function select(key: string) { if (firstLogin.value) return; section.value = key; if (key === 'quota') void loadQuota() }
@@ -57,16 +60,16 @@ async function signOut() {
   uni.reLaunch({ url: '/pages/login/index' })
 }
 </script>
-<template>
-  <view class="page stack" :class="{ dark: theme.isDark }">
+<template><page-meta :page-style="pageStyle" />
+  <view class="page stack">
     <template v-if="firstLogin"><view class="heading">欢迎使用鱼搭</view><view class="section"><view class="title">先为你的账号换一个新密码。</view><view class="note">这是管理员提供的初始密码，修改后就可以开始整理衣橱。</view></view><AccountSection :first-login="true" @password-changed="passwordChanged" /></template>
     <template v-else>
-      <view v-if="!section" class="row"><view><view class="note">账户与设置</view><view class="heading">我的</view><view class="note">账户、助手和衣橱偏好。</view></view><view class="avatar">{{ (closet.user?.displayName || closet.user?.username || '').slice(0, 1).toUpperCase() }}</view></view>
+      <view v-if="!section" class="row"><view><view v-if="!minimal" class="note">账户与设置</view><view class="heading">我的</view><view v-if="!minimal" class="note">账户、助手和衣橱偏好。</view></view><view class="avatar">{{ (closet.user?.displayName || closet.user?.username || '').slice(0, 1).toUpperCase() }}</view></view>
       <view v-if="portable" class="note">当前使用便携登录授权，最长 24 小时有效。修改密码或管理授权需退出后使用账号密码登录。</view>
       <template v-if="!section">
         <wd-cell-group border><wd-cell v-for="link in links" :key="link.key" :title="link.label" :label="link.note" is-link @click="select(link.key)" /></wd-cell-group>
         <wd-cell-group v-if="closet.user?.role === 'ADMIN'" title="管理员" border><template v-for="admin in admins" :key="admin.path"><wd-cell v-if="admin.path !== 'users' || !portable" :title="admin.label" :label="admin.note" is-link @click="go('/pkg-admin/' + admin.path + '/index')" /></template></wd-cell-group>
-        <wd-cell-group border><wd-cell title="帮助" is-link @click="go('/pkg-closet/help/index')" /><wd-cell title="处理中心" is-link @click="go('/pkg-closet/tasks/index')" /><wd-cell title="回收站" label="恢复已删除的衣物" is-link @click="go('/pkg-closet/trash/index')" /></wd-cell-group>
+        <wd-cell-group border><wd-cell title="鱼搭助手" label="问穿搭、整理衣柜、查使用方法" is-link @click="go('/pkg-outfit/assistant/index?from=settings')" /><wd-cell title="帮助" is-link @click="go('/pkg-closet/help/index')" /><wd-cell title="处理中心" is-link @click="go('/pkg-closet/tasks/index')" /><wd-cell title="回收站" label="恢复已删除的衣物" is-link @click="go('/pkg-closet/trash/index')" /></wd-cell-group>
         <view class="note">前端 {{ formatVersion(webBuild) }}<view>服务端 {{ serverVersion }}</view></view><wd-button plain @click="signOut">退出登录</wd-button>
       </template>
       <template v-else>
@@ -88,6 +91,4 @@ async function signOut() {
 <style lang="scss" scoped>
 @import '../../components/me/me.scss';
 .avatar { width: 96rpx; height: 96rpx; line-height: 96rpx; text-align: center; border-radius: 50%; background: $accent-soft; color: $accent; font-size: 40rpx; }
-.dark { background: #171c1a; color: #e8eeeb; --wot-dark-background: #171c1a; --wot-cell-background: #242b27; --wot-cell-title-color: #e8eeeb; --wot-input-bg: #242b27; --wot-input-color: #e8eeeb; --wot-textarea-bg: #242b27; --wot-textarea-color: #e8eeeb; }
-.dark :deep(.section) { background: #242b27; border-color: #3a443e; }.dark :deep(.note) { color: #b8c6be; }
 </style>

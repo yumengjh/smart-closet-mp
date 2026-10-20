@@ -8,6 +8,8 @@ import { useClosetStore } from '../../stores/closet'
 import { accountTime, registeredViaLabels, accountEventLabel } from '../../domain/account'
 import OpsSheet from '../../components/ops/OpsSheet.vue'
 import { requireAdmin, errorText, copy as copyValue } from '../../components/ops/utils'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const closet = useClosetStore(), message = useMessage(), toast = useToast()
 const allowed = ref(false), tab = ref('users'), error = ref(''), usersBusy = ref(false), invitesBusy = ref(false), actionBusy = ref(false)
 const query = reactive<AdminUsersQuery>({ q:'', page:1, size:20 }), search = ref(''), statusFilter = ref(''), roleFilter = ref('')
@@ -97,7 +99,7 @@ async function revokeInvite(invite: RegistrationInvite) {
   try { await closetApi.adminRevokeInvite(invite.id); toast.success('邀请码已撤销。'); await loadInvites() } catch(e) { toast.error(errorText(e, '撤销失败。')) } finally { actionBusy.value = false }
 }
 </script>
-<template>
+<template><page-meta :page-style="pageStyle" />
   <view v-if="allowed" class="page ops-page"><view class="ops-heading"><view class="ops-eyebrow">管理员</view><text class="ops-title">用户管理</text><view class="ops-subtitle">管理账号、每日额度和邀请码。</view></view>
     <view v-if="closet.user?.portableLogin" class="ops-alert">便携登录无法管理账号，请退出后使用账号密码登录。</view><template v-else>
       <view v-if="error" class="ops-alert ops-error">{{ error }}</view><wd-tabs v-model="tab"><wd-tab name="users" title="用户" /><wd-tab name="invites" title="邀请码" /></wd-tabs>

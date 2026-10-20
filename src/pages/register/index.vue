@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { closetApi, type RegistrationMode } from '../../services/api'
 import { useClosetStore } from '../../stores/closet'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const closet = useClosetStore()
 const mode = ref<RegistrationMode>(), modeLoading = ref(false), busy = ref(false), error = ref('')
 const username = ref(''), displayName = ref(''), password = ref(''), repeat = ref(''), inviteCode = ref('')
@@ -31,7 +33,7 @@ async function submit() {
 }
 function login() { uni.reLaunch({ url: '/pages/login/index' }) }
 </script>
-<template>
+<template><page-meta :page-style="pageStyle" />
   <view class="register">
     <view class="brand"><image class="logo" src="/static/yuda-logo.png" mode="aspectFit" /><view><text class="name">鱼搭</text><text class="muted">数字衣橱</text></view></view>
     <view class="hero"><text class="eyebrow">专属衣橱</text><text class="hero-title">注册你的账号</text><text class="muted">为你的衣物，留一个自己的位置。</text></view>

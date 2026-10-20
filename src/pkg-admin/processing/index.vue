@@ -5,6 +5,8 @@ import { useToast } from 'wot-design-uni'
 import { processingApi, poolLabels, executionLabels, type AdminProcessing, type Limits, type ExecutionTask } from '../../services/processing'
 import { requireAdmin, errorText } from '../../components/ops/utils'
 import { useOpsPolling } from '../../components/ops/polling'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const toast = useToast(), allowed = ref(false), active = ref(false), state = ref<AdminProcessing>(), draft = ref<Limits>(), error = ref(''), saving = ref(false), page = ref(1), loading = ref(false), tasks = ref<ExecutionTask[]>([]), rpm = ref('')
 let draftRevision = 0
 async function load(reset = false, append = false) {
@@ -28,7 +30,7 @@ onPullDownRefresh(async () => { try { await load() } finally { uni.stopPullDownR
 onReachBottom(async () => { if (state.value?.items.length === 100 && !loading.value) { page.value++; await load(false, true) } })
 useOpsPolling(active, () => load(), () => 3000)
 </script>
-<template>
+<template><page-meta :page-style="pageStyle" />
   <view v-if="allowed" class="page ops-page"><view class="ops-heading"><text class="ops-title">任务与资源管理</text><view class="ops-subtitle">查看全局积压与账户瓶颈。降低容量不会中止正在运行的任务。</view></view><view v-if="error" class="ops-alert ops-error">{{ error }}<wd-button type="text" size="small" @click="load()">重试</wd-button></view><wd-skeleton v-if="!state || !draft" :row-col="[1,1,1,1,1]" animation="gradient" />
     <template v-else><view class="ops-section"><text class="ops-h2">正在运行</text><view class="ops-copy">降低容量不会中止正在运行的任务。</view><view class="ops-actions"><view v-for="pool in ['CPU','RECOGNITION','GENERATION']" :key="pool" class="ops-stat">{{ poolLabels[pool] }}<text class="ops-stat-number">{{ state.resources.running[pool] || 0 }}</text></view></view></view>
       <view class="ops-section"><text class="ops-h2">调度配置</text><view class="ops-copy">各资源池容量与上游账户并发。</view><view class="ops-field"><text class="ops-label">本地处理容量</text><wd-input-number v-model="draft.cpu" :min="1" :max="16" /></view><view class="ops-field"><text class="ops-label">识别容量</text><wd-input-number v-model="draft.recognition" :min="1" :max="32" /></view><view class="ops-field"><text class="ops-label">增强容量</text><wd-input-number v-model="draft.generation" :min="1" :max="16" /></view><view class="ops-field"><text class="ops-label">每个上游凭据账户总并发</text><wd-input-number v-model="draft.accountConcurrency" :min="1" :max="64" /></view><view class="ops-field"><text class="ops-label">助手预留并发</text><wd-input-number v-model="draft.assistantReserved" :min="0" :max="draft.accountConcurrency" /></view><wd-input v-model="rpm" label="每分钟请求数 RPM" type="number" placeholder="未知时留空" /><view class="ops-field"><text class="ops-label">暂停资源池</text><wd-checkbox-group v-model="draft.paused"><view v-for="(label,key) in poolLabels" :key="key" class="ops-field"><wd-checkbox :model-value="key">{{ label }}</wd-checkbox></view></wd-checkbox-group></view><view class="ops-actions"><wd-button :loading="saving" @click="save">保存调度配置</wd-button><wd-button plain :disabled="saving" @click="reload">放弃修改并重新读取</wd-button></view></view>

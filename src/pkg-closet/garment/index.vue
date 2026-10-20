@@ -12,6 +12,7 @@ import {metadataPatch,rebaseMetadata,type MetadataField} from '../../domain/meta
 import {createUuid} from '../../domain/id'
 import {isProcessing,blocksConfirmation,workflowSummary,generatedImages,imageLabels,orderedTasks} from '../../domain/workflow'
 import AuthImage from '../../components/AuthImage.vue'
+import AssistantEntry from '../../components/assistant/AssistantEntry.vue'
 import GarmentMetadataFields from '../../components/closet/GarmentMetadataFields.vue'
 import GarmentProcessingStatus from '../../components/closet/GarmentProcessingStatus.vue'
 import GarmentEdgeHelp from '../../components/closet/GarmentEdgeHelp.vue'
@@ -20,6 +21,8 @@ import SimilarGarments from '../../components/closet/SimilarGarments.vue'
 import WearHistory from '../../components/closet/WearHistory.vue'
 import FloatingPager from '../../components/closet/FloatingPager.vue'
 import {errorText,wardrobe,pending,openAdd,openBatch,outfitWith} from '../../components/closet/navigation'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const closet=useClosetStore(),processingStore=useProcessingStore(),message=useMessage(),toast=useToast()
 const id=ref(''),queryTask=ref(''),garment=ref<Garment|null>(null),task=ref<ClosetTask|null>(null),imageTask=ref<ClosetTask|null>(null),parentTask=ref<ClosetTask|null>(null),baseline=ref<Garment|null>(null)
 const source=ref<{batchId?:string;originalUrl?:string;previewUrl?:string;completion?:boolean}>({}),quickIntakeId=ref(''),schema=ref<MetadataField[]>([]),values=reactive<Record<string,string[]>>({}),selectedAssetId=ref(''),resetFields=ref<string[]>([]),confirmLayering=ref(false)
@@ -77,12 +80,12 @@ onShow(async()=>{alive=true;clock=setInterval(()=>now.value=Date.now(),1000);if(
 function stop(){alive=false;clearTimeout(timer);clearInterval(clock)}onHide(stop);onUnload(()=>{stop();epoch++})
 onBackPress(()=>{if(allowBack)return false;if(busy.value)return true;if(panel.value!=='result'){returnResult(true);return true}if(dirty.value){void leave();return true}return false})
 </script>
-<template><view class="page closet-page">
+<template><page-meta :page-style="pageStyle" /><view class="page closet-page">
  <wd-button type="text" @click="panel==='result'?leave():returnResult(true)">{{panel!=='result'?'返回处理结果':source.batchId?'返回本批次':garment?.status==='ACTIVE'?'返回衣柜':'所有未入柜衣物'}}</wd-button>
  <wd-skeleton v-if="loading" :row-col="[1,1,{height:'600rpx'},1,1,1]" animation="gradient"/>
  <view v-else-if="!garment" class="section"><wd-status-tip image="network" :tip="connectionError"/><wd-button @click="refresh">重试</wd-button></view>
  <template v-else>
- <view class="heading"><text class="title">{{pageTitle}}</text><text class="subtitle">{{pageSubtitle}}</text><view class="tags"><wd-tag>{{garment.status==='ACTIVE'?'已入柜':garment.status==='TRASHED'?'回收站':'尚未入柜'}}</wd-tag></view></view>
+ <view class="heading"><text class="title">{{pageTitle}}</text><text class="subtitle">{{pageSubtitle}}</text><view class="tags"><wd-tag>{{garment.status==='ACTIVE'?'已入柜':garment.status==='TRASHED'?'回收站':'尚未入柜'}}</wd-tag><AssistantEntry from="garment" :garment="garment.id"/><AssistantEntry v-if="processing" from="garment" :garment="garment.id" waiting label="等待时聊聊"/></view></view>
  <view v-if="connectionError" class="notice"><wd-notice-bar :text="`连接中断：${connectionError}。保留上次状态，正在重试。`" :scrollable="false" wrapable/><wd-button type="text" @click="refresh">重新连接</wd-button></view>
  <view v-if="error" class="notice"><wd-notice-bar :text="error+' 你的图片选择和表单输入仍保留。'" type="danger" :scrollable="false" wrapable/><wd-button type="text" @click="reconcile">核对最新版本</wd-button></view>
  <wd-notice-bar v-if="success&&!completed" class="notice" :text="success" type="info" :scrollable="false" wrapable/>

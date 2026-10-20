@@ -9,6 +9,8 @@ import { STATUS, LICENSE, REJECT, PRESENTATION, word } from '../../components/op
 import { requireAdmin, errorText, options, copy } from '../../components/ops/utils'
 import OpsSheet from '../../components/ops/OpsSheet.vue'
 import AuthImage from '../../components/AuthImage.vue'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const toast = useToast(), message = useMessage(), allowed = ref(false)
 const items = ref<OotdSample[]>([]), loading = ref(true), error = ref(''), busy = ref(''), tab = ref('samples'), filter = ref('EXTRACTED'), count = ref(20)
 const file = ref<{ path:string; name:string }>(), sourceUrl = ref(''), license = ref('OWN'), note = ref('')
@@ -89,7 +91,7 @@ const statsRows = computed(() => {
   ]
 })
 </script>
-<template>
+<template><page-meta :page-style="pageStyle" />
   <view v-if="allowed" class="page ops-page"><view class="ops-heading"><text class="ops-title">整套穿搭样本</text><view class="ops-subtitle">上传整套穿搭照片，模型提取物品、姿势与场景，审核后用于统计和生成搭配模板。原图审核完成即删除。</view></view>
     <view class="ops-alert">收图前请看采集规范：一张图一个人一整套、日常可穿、不收未成年人；每张图调用一次识图模型。<view class="ops-meta">规范见文档 docs/OOTD_SAMPLE_COLLECTION.md。许可“未知”的样本只参与统计，不能生成模板。</view></view>
     <view class="ops-section"><wd-button plain :disabled="!!busy" @click="pick">{{ file ? file.name : '选择照片' }}</wd-button><wd-input v-model="sourceUrl" clearable placeholder="来源链接（可选）" :disabled="!!busy" /><wd-picker v-model="license" label="许可" :columns="options(LICENSE)" :disabled="!!busy" /><wd-input v-model="note" clearable placeholder="备注（可选）" :disabled="!!busy" /><view class="ops-actions"><wd-button :disabled="!file || !!busy" :loading="busy === 'upload'" @click="upload">上传并提取</wd-button></view></view>

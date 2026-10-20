@@ -1,4 +1,6 @@
 import { shallowRef } from 'vue'
+import { openTab, parseQuery, TAB_NAMES } from './tab-route'
+import { pushPage } from './page-stack'
 import { arrangeOutfit, orderOutfitLayers } from '../domain/outfit-layout'
 import { closetApi } from '../services/api'
 import { artworkForGarment, createOutfitElement, loadOutfitImage } from '../domain/outfit-images'
@@ -75,17 +77,14 @@ export async function openRecommendedOutfit(username: string, outfit: import('..
 /** Mini program routes corresponding to web navigation events and help links. */
 export function navigateOutfitLink(path: string) {
   const [pathname, query = ''] = path.split('?')
-  const tabs: Record<string, string> = { '/wardrobe': 'wardrobe', '/pending': 'pending', '/outfits': 'outfits', '/ootd': 'ootd', '/settings': 'settings' }
-  if (tabs[pathname]) {
-    if (query) uni.setStorageSync(`yixu.route-query:${tabs[pathname]}`, query)
-    uni.switchTab({ url: `/pages/${tabs[pathname]}/index` }); return
-  }
+  const tab = TAB_NAMES.find(name => pathname === `/${name}`)
+  if (tab) { openTab(tab, parseQuery(query)); return }
   let target = ''
   if (pathname === '/outfits/workspace') target = '/pkg-outfit/workspace/index'
   else if (pathname.startsWith('/outfits/')) target = `/pkg-outfit/workspace/index?id=${encodeURIComponent(pathname.slice(9))}`
   else if (pathname.startsWith('/garment/')) target = `/pkg-closet/garment/index?id=${encodeURIComponent(pathname.slice(9))}`
   else target = ({ '/add': '/pkg-closet/add/index', '/tasks': '/pkg-closet/tasks/index', '/trash': '/pkg-closet/trash/index', '/help': '/pkg-closet/help/index' } as Record<string, string>)[pathname] || ''
-  if (target) uni.navigateTo({ url: target + (query ? (target.includes('?') ? '&' : '?') + query : '') })
+  if (target) pushPage(target + (query ? (target.includes('?') ? '&' : '?') + query : ''))
 }
 
 /** AbortController is not provided by all WeChat base libraries; http.streamPost only needs this small signal contract. */

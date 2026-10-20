@@ -9,6 +9,7 @@ import { createUuid } from '../../domain/id'
 import { modelLabel } from './labels'
 import { useProcessingStore } from '../../stores/processing'
 import { useSendOffStore } from '../../stores/sendOff'
+import { openTab } from '../../services/tab-route'
 const toast = useToast(), message = useMessage(), processing = useProcessingStore(), sendOff = useSendOffStore()
 const profile = ref<Profile>({ revision: 0, sex: null, heightCm: null, weightKg: null, bodyShape: null, measurements: {}, preferences: {}, defaultBaselineId: null })
 const savedProfile = ref(''), dirty = computed(() => JSON.stringify(profile.value) !== savedProfile.value)
@@ -103,7 +104,7 @@ async function deletePhoto(id: string) {
   try { await message.confirm({ title: '仅删除这张原始参考照片？', msg: '这张上传照片会永久清理，已经生成的基准人物和 OOTD 保留。正在直接使用此照片生成人物的任务会停止发布。', confirmButtonText: '删除原照', cancelButtonText: '取消' }) } catch { return }
   try { await platformRequest(`/api/me/reference-photos/${id}`, 'DELETE'); await load() } catch (e) { toast.error(String(e)) }
 }
-function goOotd() { uni.switchTab({ url: '/pages/ootd/index' }) }
+function goOotd() { openTab('ootd') }
 onMounted(() => { void load(); timer = setInterval(refreshResults, 5000) })
 onUnmounted(() => clearInterval(timer))
 </script>

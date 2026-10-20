@@ -10,7 +10,9 @@ import { useClosetStore } from '../../stores/closet'
 import { usePreferencesStore } from '../../stores/preferences'
 import { useProcessingStore } from '../../stores/processing'
 import { useSendOffStore } from '../../stores/sendOff'
+import { openTab, useTabQuery } from '../../services/tab-route'
 import { appVisible } from '../../services/lifecycle'
+import AssistantEntry from '../../components/assistant/AssistantEntry.vue'
 import AuthImage from '../../components/AuthImage.vue'
 import PosePicker from '../../components/me/PosePicker.vue'
 import ResultViewer from '../../components/me/ResultViewer.vue'
@@ -19,6 +21,8 @@ import RenderSupport from '../../components/me/RenderSupport.vue'
 import { modelLabel } from '../../components/me/labels'
 import { describeAdjustments } from '../../components/me/body-adjust'
 import { adviceFor } from '../../components/me/jobStatus'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const toast = useToast(), message = useMessage(), closet = useClosetStore(), preferences = usePreferencesStore(), processing = useProcessingStore(), sendOff = useSendOffStore()
 const outfits = ref<Outfit[]>([]), baselines = ref<Baseline[]>([]), capabilities = ref<Capability[]>([]), jobs = ref<RenderJob[]>([]), poseCatalog = ref<PoseCatalog | null>(null)
 const outfitId = ref(''), baselineId = ref(''), model = ref(''), selected = ref<string[]>([]), pose = ref<PoseChoice>({ mode: 'AUTO' })
@@ -108,19 +112,19 @@ async function retry(job: RenderJob) {
 async function adjusted(job: RenderJob) { const source = viewingJob.value; sendOff.launch({ title: `身材调整 · ${describeAdjustments(job.summary?.adjustments)}（原图保留）`, cards: source?.mediaUrl ? [{ image: source.mediaUrl, label: '原图' }] : [] }); processing.trackRender(job, true); viewing.value = null; jobs.value = [job, ...jobs.value.filter(j => j.id !== job.id)]; await refresh() }
 function openJob(job: RenderJob) { if (job.mediaUrl) viewing.value = job; else statusId.value = job.id }
 function openFromRoute() { if (!routeJob.value || loading.value) return; const job = jobs.value.find(j => j.id === routeJob.value); if (job) openJob(job); else toast.show('这条生成记录已经不存在，可能已被删除。'); routeJob.value = '' }
-function manageModels() { uni.setStorageSync('me.settings.section', 'personal'); uni.switchTab({ url: '/pages/settings/index' }) }
+function manageModels() { openTab('settings', { section: 'personal' }) }
 onLoad(query => { outfitId.value = String(query?.outfit || ''); routeJob.value = String(query?.job || '') })
+useTabQuery('ootd', query => { if (query.outfit) outfitId.value = query.outfit; if (query.job) { routeJob.value = query.job; openFromRoute() } })
 onShow(async () => {
   active = true; await closet.ensureUser(); if (!closet.user) { uni.reLaunch({ url: '/pages/login/index' }); return }; if (closet.user.mustChangePassword) { uni.reLaunch({ url: '/pages/settings/index?firstLogin=1' }); return }
-  const target = uni.getStorageSync('me.ootd.job'); if (target) { routeJob.value = String(target); uni.removeStorageSync('me.ootd.job') }
   await load(); clearInterval(timer); timer = setInterval(refresh, 5000)
 })
 onHide(() => { active = false; clearInterval(timer) }); onUnload(() => clearInterval(timer))
 onPullDownRefresh(async () => { try { await load() } finally { uni.stopPullDownRefresh() } })
 </script>
-<template>
+<template><page-meta :page-style="pageStyle" />
   <view class="page stack">
-    <view><view class="heading">OOTD 试穿</view><view v-if="!preferences.minimal" class="note">选搭配、模特和动作，生成一张上身效果图。</view><wd-button plain size="small" @click="manageModels">管理模特</wd-button></view>
+    <view><view class="heading">OOTD 试穿</view><view v-if="!preferences.minimal" class="note">选搭配、模特和动作，生成一张上身效果图。</view><wd-button plain size="small" @click="manageModels">管理模特</wd-button><AssistantEntry from="ootd" /></view>
     <view v-if="error && !confirmOpen" class="error">{{ error }}<wd-button type="text" @click="load">重新加载</wd-button></view><wd-skeleton v-if="loading" :row-col="[1, 1, 1, 1]" />
     <template v-else>
       <view class="section stack"><view class="title">1 搭配</view><wd-picker v-model="outfitId" label="已保存搭配" :disabled="pending" :columns="outfits.map(o => ({ value: o.id, label: o.name }))" placeholder="选择组合台里保存的搭配" />

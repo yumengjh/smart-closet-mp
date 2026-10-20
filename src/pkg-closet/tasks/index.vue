@@ -9,9 +9,12 @@ import { useProcessingStore } from '../../stores/processing'
 import ExecutionTasks from '../../components/ops/ExecutionTasks.vue'
 import RenderTasksOverview from '../../components/ops/RenderTasksOverview.vue'
 import TaskInboxPanel from '../../components/ops/TaskInboxPanel.vue'
+import AssistantEntry from '../../components/assistant/AssistantEntry.vue'
 import AuthImage from '../../components/AuthImage.vue'
 import { go, when, errorText } from '../../components/ops/utils'
 import { useOpsPolling } from '../../components/ops/polling'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle, minimal } = useAppearance()
 const message = useMessage(), tasks = ref<ClosetTask[]>([]), active = ref(false), loading = ref(true), error = ref(''), cancelling = ref(''), filter = ref('全部')
 const closet = useClosetStore(), processing = useProcessingStore()
 let delay = 2000
@@ -28,13 +31,13 @@ async function cancel(task: ClosetTask) {
   try { await closetApi.cancel(task.id); await load() } catch (e) { error.value = errorText(e, '取消失败。') } finally { cancelling.value = '' }
 }
 function visit(task: ClosetTask) { if (task.garmentId) go(`/garment/${task.garmentId}?task=${task.id}`) }
-onShow(async () => { await closet.ensureUser(); if (closet.user) processing.start(closet.user.username); active.value = true })
+onShow(async () => { await closet.ensureUser(); active.value = true })
 onHide(() => { active.value = false })
 onPullDownRefresh(async () => { try { await Promise.all([load(), processing.refresh(true)]) } finally { uni.stopPullDownRefresh() } })
 useOpsPolling(active, load, () => runningCount.value || error.value ? delay : 15000)
 </script>
-<template>
-  <view class="page ops-page"><view class="ops-heading"><text class="ops-title">任务记录</text><view class="ops-subtitle">每件衣物从上传到入柜的处理步骤和结果。快速入柜会自动完成，其他整理方式可以逐件核对。</view><wd-tag v-if="runningCount" type="primary" plain>{{ runningCount }} 项处理中</wd-tag></view>
+<template><page-meta :page-style="pageStyle" />
+  <view class="page ops-page"><view class="ops-heading"><text class="ops-title">任务记录</text><view v-if="!minimal" class="ops-subtitle">每件衣物从上传到入柜的处理步骤和结果。快速入柜会自动完成，其他整理方式可以逐件核对。</view><wd-tag v-if="runningCount" type="primary" plain>{{ runningCount }} 项处理中</wd-tag><AssistantEntry v-if="runningCount" from="tasks" waiting label="等待时聊聊" /></view>
     <TaskInboxPanel :tasks="tasks" :active="active" :history-error="!!error" /><ExecutionTasks :tasks="tasks" :active="active" /><RenderTasksOverview :active="active" />
     <wd-tabs v-model="filter"><wd-tab v-for="f in filters" :key="f.name" :name="f.name" :title="f.title" /></wd-tabs><view class="ops-meta">显示最近 50 项</view>
     <view v-if="error" class="ops-alert ops-warning">无法更新任务状态：{{ error }}，正在重新连接。<wd-button type="text" size="small" @click="load">重试</wd-button></view>

@@ -8,9 +8,12 @@ import type { Outfit, OutfitScene } from '../../domain/outfit'
 import { listWorkspaces, pruneAgentWorkspaces, setActiveWorkspace, workspaceSummary, type WorkspaceInfo } from '../../domain/workspace-registry'
 import { recommendApi } from '../../recommend/api'
 import type { RecommendedOutfit } from '../../recommend/types'
+import { useTabQuery } from '../../services/tab-route'
 import { candidateScene, navigateOutfitLink, openOutfitDraft } from '../../services/outfit'
 import OutfitThumbnail from '../../components/outfit/OutfitThumbnail.vue'
 import RecommendationStrip from '../../components/outfit/RecommendationStrip.vue'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle, minimal } = useAppearance()
 const closet = useClosetStore(), toast = useToast(), message = useMessage()
 const tab = ref(uni.getStorageSync('yixu.outfits.tab.v1') === 'today' ? '今天穿什么' : '我的搭配'), visited = ref(tab.value === '今天穿什么')
 const saved = ref<Outfit[]>([]), loading = ref(false), error = ref(''), search = ref(''), wornDates = ref<Record<string, string>>({}), wearing = ref(false), required = ref('')
@@ -52,11 +55,12 @@ async function action(event: { index: number }) {
 }
 function readRequired(query: Record<string, string | undefined>) { if (query.with) { required.value = query.with; tab.value = '今天穿什么' } }
 onLoad(query => readRequired(query || {}))
-onShow(() => { const query = uni.getStorageSync('yixu.route-query:outfits'); if (query) { uni.removeStorageSync('yixu.route-query:outfits'); const entry = String(query).split('&').find(s => s.startsWith('with=')); if (entry) readRequired({ with: decodeURIComponent(entry.slice(5)) }) } void load() })
+useTabQuery('outfits', query => readRequired(query))
+onShow(() => { void load() })
 onPullDownRefresh(async () => { try { if (tab.value === '今天穿什么') await strip.value?.refresh(); else await load() } finally { uni.stopPullDownRefresh() } })
 </script>
-<template><view class="page">
-  <view class="heading">穿搭组合台</view><text class="subtitle">从自己的衣柜选单品，保存一套随时可以穿的搭配。</text><view class="actions"><wd-button size="small" plain @click="navigateOutfitLink('/ootd')">OOTD 试穿</wd-button><wd-button size="small" plain @click="openWorkspace()">穿搭工作区</wd-button><wd-button size="small" @click="openEditor()">新建搭配</wd-button><wd-button size="small" type="text" @click="assistant">鱼搭助手</wd-button></view>
+<template><page-meta :page-style="pageStyle" /><view class="page">
+  <view class="heading">穿搭组合台</view><text v-if="!minimal" class="subtitle">从自己的衣柜选单品，保存一套随时可以穿的搭配。</text><view class="actions"><wd-button size="small" plain @click="navigateOutfitLink('/ootd')">OOTD 试穿</wd-button><wd-button size="small" plain @click="openWorkspace()">穿搭工作区</wd-button><wd-button size="small" @click="openEditor()">新建搭配</wd-button><wd-button size="small" type="text" @click="assistant">鱼搭助手</wd-button></view>
   <view v-if="stripVisible" class="section"><text class="field-label">画板</text><view class="stack"><wd-button v-for="w in workspaces" :key="w.info.id" plain size="small" @click="openWorkspace(w.info)">{{ w.info.name }}{{ w.info.kind === 'agent' ? '（临时）' : '' }} · {{ w.boards ? `${w.boards} 个组合台${w.unsaved ? `，${w.unsaved} 个未保存` : ''}` : '空' }}</wd-button></view></view>
   <view class="section"><wd-segmented v-model:value="tab" :options="['我的搭配', '今天穿什么']" /><text v-if="tab === '我的搭配' && saved.length" class="small">我的搭配 · {{ saved.length }}</text></view>
   <RecommendationStrip v-if="visited" v-show="tab === '今天穿什么'" ref="strip" :required="required" @clear-required="required = ''" />

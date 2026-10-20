@@ -1,25 +1,22 @@
 import { useClosetStore } from '../../stores/closet'
+import { pushPage } from '../../services/page-stack'
+import { openTab, parseQuery, TAB_NAMES } from '../../services/tab-route'
 export async function requireAdmin() {
   const closet = useClosetStore()
   await closet.ensureUser()
   if (closet.user?.role === 'ADMIN') return true
-  uni.switchTab({ url: '/pages/wardrobe/index' }); return false
+  openTab('wardrobe'); return false
 }
 export function go(path: string) {
   const [pathname, query = ''] = path.split('?')
-  const tabs: Record<string, string> = { '/wardrobe': 'wardrobe', '/pending': 'pending', '/outfits': 'outfits', '/ootd': 'ootd', '/settings': 'settings' }
-  if (tabs[pathname]) {
-    // switchTab cannot carry query parameters; consume the intent on the destination's onLoad.
-    if (query) uni.reLaunch({ url: `/pages/${tabs[pathname]}/index?${query}` })
-    else uni.switchTab({ url: `/pages/${tabs[pathname]}/index` })
-    return
-  }
+  const tab = TAB_NAMES.find(name => pathname === `/${name}`)
+  if (tab) { openTab(tab, parseQuery(query)); return }
   const garment = pathname.match(/^\/garment\/([^/]+)$/), batch = pathname.match(/^\/batches\/([^/]+)$/)
-  if (garment) uni.navigateTo({ url: `/pkg-closet/garment/index?id=${encodeURIComponent(garment[1])}${query ? '&' + query : ''}` })
-  else if (batch) uni.navigateTo({ url: `/pkg-closet/batch/index?id=${encodeURIComponent(batch[1])}` })
+  if (garment) pushPage(`/pkg-closet/garment/index?id=${encodeURIComponent(garment[1])}${query ? '&' + query : ''}`)
+  else if (batch) pushPage(`/pkg-closet/batch/index?id=${encodeURIComponent(batch[1])}`)
   else {
     const routes: Record<string, string> = { '/tasks': '/pkg-closet/tasks/index', '/add': '/pkg-closet/add/index', '/help': '/pkg-closet/help/index', '/admin/templates': '/pkg-admin/templates/index' }
-    if (routes[pathname]) uni.navigateTo({ url: routes[pathname] + (query ? '?' + query : '') })
+    if (routes[pathname]) pushPage(routes[pathname] + (query ? '?' + query : ''))
   }
 }
 export function when(value: string | number) {

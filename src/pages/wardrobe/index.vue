@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed,nextTick,reactive,ref,watch} from 'vue'
-import {onShow,onHide,onUnload,onPageScroll,onPullDownRefresh,onReachBottom} from '@dcloudio/uni-app'
+import {onShow,onHide,onUnload,onPageScroll,onPullDownRefresh} from '@dcloudio/uni-app'
 import {useMessage,useToast} from 'wot-design-uni'
 import {closetApi,type Garment,type ListQuery,type SearchResult} from '../../services/api'
 import {useClosetStore} from '../../stores/closet'
@@ -9,8 +9,11 @@ import GarmentCard from '../../components/closet/GarmentCard.vue'
 import GarmentCardSkeleton from '../../components/closet/GarmentCardSkeleton.vue'
 import FloatingPager from '../../components/closet/FloatingPager.vue'
 import AuthImage from '../../components/AuthImage.vue'
+import AssistantEntry from '../../components/assistant/AssistantEntry.vue'
 import {buildTags,combineQuery,imageModelNotice,removeWords,IMAGE_STYLE_LABELS,SEARCH_EXAMPLES,type SearchTag} from '../../components/closet/search'
 import {choosePhotos,errorText,openAdd,openTasks} from '../../components/closet/navigation'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle, minimal } = useAppearance()
 const closet=useClosetStore(),message=useMessage(),toast=useToast()
 const sortOptions=[{value:'updated',label:'最近更新'},{value:'created',label:'最近添加'},{value:'created_asc',label:'最早添加'},{value:'favorite',label:'收藏优先'},{value:'category',label:'按品类'},{value:'color',label:'按颜色'},{value:'name',label:'按名称'}]
 const storedSize=Number(uni.getStorageSync('closet.wardrobe.size'))
@@ -45,12 +48,11 @@ onShow(async()=>{visible=true;await Promise.all([load(),closet.refreshCounts(),c
 onHide(()=>{visible=false;remember();clearTimeout(timer)})
 onUnload(()=>{visible=false;remember();requestId++;clearTimeout(timer)})
 onPullDownRefresh(async()=>{try{await load()}finally{uni.stopPullDownRefresh()}})
-onReachBottom(()=>{if(!selecting.value)void turn(1)})
 </script>
-<template><view class="page closet-page">
- <view class="heading"><text class="muted">衣橱空间</text><text class="title">我的衣柜</text><text class="subtitle">已经核对并确认入柜的衣物，{{searching?'搜索结果按相关度排序。':`按“${sortOptions.find(o=>o.value===query.sort)?.label||'最近更新'}”排序。`}}</text><view class="row"><text>{{total}} {{searching?'件符合':'件已入柜'}}</text><wd-button v-if="!selecting&&items.length" size="small" type="text" @click="selecting=true;batchResult=''">批量处理</wd-button></view></view>
+<template><page-meta :page-style="pageStyle" /><view class="page closet-page">
+ <view class="heading"><text v-if="!minimal" class="muted">衣橱空间</text><text class="title">我的衣柜</text><text v-if="!minimal" class="subtitle">已经核对并确认入柜的衣物，{{searching?'搜索结果按相关度排序。':`按“${sortOptions.find(o=>o.value===query.sort)?.label||'最近更新'}”排序。`}}</text><view class="row"><text>{{total}} {{searching?'件符合':'件已入柜'}}</text><wd-button v-if="!selecting&&items.length" size="small" type="text" @click="selecting=true;batchResult=''">批量处理</wd-button><AssistantEntry from="wardrobe"/></view></view>
  <wd-search v-model="query.q" hide-cancel clearable :placeholder="queryImage?'可再加文字，例如：红色、上衣':'搜颜色、品类、描述，或用图片搜'" @change="debounce" @clear="debounce" @search="debounce" />
- <view class="actions"><wd-button size="small" plain @click="attach">用图片搜</wd-button><wd-button size="small" plain @click="filtersOpen=true">筛选{{hasFilters?' · 已筛选':''}}</wd-button><wd-button size="small" type="text" @click="helpOpen=true">搜索说明</wd-button></view>
+ <view class="actions"><wd-button size="small" plain @click="attach">用图片搜</wd-button><wd-button size="small" plain @click="filtersOpen=true">筛选{{hasFilters?' · 已筛选':''}}</wd-button><wd-button v-if="!minimal" size="small" type="text" @click="helpOpen=true">搜索说明</wd-button></view>
  <view v-if="queryImage" class="query-picture"><AuthImage :src="queryImage"/><wd-button size="small" @click="detach">去掉图片</wd-button></view>
  <view class="tags"><wd-tag v-for="tag in tags" :key="tag.key" closable @close="closeTag(tag)">{{tag.label}}</wd-tag></view>
  <wd-notice-bar v-if="searchResult?.notice" class="notice" :text="searchResult.notice" :scrollable="false" wrapable type="info"/><wd-notice-bar v-if="modelNotice&&modelNotice!==searchResult?.notice" class="notice" :text="modelNotice" :scrollable="false" wrapable/><text v-if="queryImage&&searchResult?.note" class="hint">{{searchResult.note}}</text>

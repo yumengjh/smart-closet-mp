@@ -5,6 +5,7 @@ import { similarApi, type DuplicatePair, type DuplicateScan } from '../../servic
 import type { ImageModelStatus } from '../../services/api'
 import { appVisible } from '../../services/lifecycle'
 import AuthImage from '../AuthImage.vue'
+import { openGarment } from '../closet/navigation'
 const toast = useToast(), pairs = ref<DuplicatePair[]>([]), scan = ref<DuplicateScan | null>(null), imageModel = ref<ImageModelStatus | null>(null)
 const loading = ref(true), starting = ref(false), error = ref(''), busy = ref('')
 const scanning = computed(() => ['QUEUED', 'RUNNING'].includes(scan.value?.status || ''))
@@ -19,7 +20,7 @@ async function watchScan() {
 async function startScan() { if (scanning.value || starting.value) return; starting.value = true; try { scan.value = (await similarApi.startScan()).scan } catch (e) { toast.error(String(e)) } finally { starting.value = false } }
 const summary = computed(() => { const s = scan.value; if (!s) return '扫描在后台进行，完成后会在右上角提醒。'; if (scanning.value) return '正在扫描：先补齐图片指纹和图像识别，再逐对比对…'; const when = new Date(s.finishedAt || s.requestedAt).toLocaleString('zh-CN'); return s.status === 'DONE' ? `上次扫描 ${when}：${s.pairs ? `${s.pairs} 对可能重复` : '没有发现重复'}` : `上次扫描 ${when} 没有完成` })
 async function dismiss(p: DuplicatePair) { busy.value = p.a.id + p.b.id; try { await similarApi.dismiss(p.a.id, p.b.id); pairs.value = pairs.value.filter(x => x !== p); toast.success('已记住：这两件不是重复。') } catch (e) { toast.error(String(e)) } finally { busy.value = '' } }
-function garment(id: string) { uni.navigateTo({ url: '/pkg-closet/garment/index?id=' + encodeURIComponent(id) }) }
+function garment(id: string) { openGarment(id) }
 onMounted(() => { void load(); void watchScan() }); onUnmounted(() => { alive = false; clearTimeout(timer) })
 </script>
 <template>

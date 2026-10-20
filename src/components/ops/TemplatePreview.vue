@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCurrentInstance, nextTick, onMounted, watch } from 'vue'
+import { getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue'
 import type { TemplateSlot } from '../../services/admin'
 const props = defineProps<{ slots: TemplateSlot[]; uid: string }>()
 const instance = getCurrentInstance()
@@ -15,21 +15,28 @@ const shapes: Record<string,number[][]> = {
   HEADWEAR:[[44,13],[50,16],[56,13],[56,19],[50,16],[44,19]], BAG:[[76,66],[90,66],[90,80],[76,80]],
 }
 const order = ['SOCKS','BOTTOM','ONE_PIECE','OVERALL','TOP','OUTER','SHOES','HAT','HEADWEAR','BAG','HANDHELD']
+// Legacy canvas-id canvases are native layers that paint above popups (the 查看示意 sheet). Draw on an off-screen 2d canvas
+// and show the exported picture instead, which behaves like any other <image>.
+const picture = ref('')
 async function draw() {
   await nextTick()
-  const c = uni.createCanvasContext(props.uid, instance?.proxy), scale = uni.upx2px(200) / 100
-  c.scale(scale, scale); c.clearRect(0,0,100,140); c.setFillStyle('#efe7dc'); c.beginPath(); c.arc(50,22,7,0,Math.PI*2); c.fill()
+  const node = await new Promise<any>(resolve => uni.createSelectorQuery().in(instance?.proxy as any).select('.hidden-canvas').fields({ node: true, size: true } as any, (result: any) => resolve(result?.node || null)).exec())
+  if (!node) return
+  const ratio = 4
+  node.width = 100 * ratio; node.height = 140 * ratio
+  const c = node.getContext('2d')
+  c.scale(ratio, ratio); c.clearRect(0, 0, 100, 140); c.fillStyle = '#efe7dc'; c.beginPath(); c.arc(50, 22, 7, 0, Math.PI * 2); c.fill()
   for (const role of order) for (const s of props.slots.filter(slot => slot.roles.includes(role))) {
-    const color = s.colorAny.find(k => HEX[k]); c.setFillStyle(color ? HEX[color] : '#d6d6d6'); c.setStrokeStyle('#5f5f5f'); c.setLineWidth(.8); c.setLineDash(color ? [] : [2,1.5], 0)
-    if (role === 'SHOES' || role === 'SOCKS') { const y = role === 'SHOES' ? 129 : 112; c.fillRect(33,y,13,role === 'SHOES' ? 6 : 16); c.fillRect(54,y,13,role === 'SHOES' ? 6 : 16); continue }
-    if (role === 'HANDHELD') { c.beginPath(); c.arc(14,73,5,0,Math.PI*2); c.fill(); continue }
+    const color = s.colorAny.find(k => HEX[k]); c.fillStyle = color ? HEX[color] : '#d6d6d6'; c.strokeStyle = '#5f5f5f'; c.lineWidth = .8; c.setLineDash(color ? [] : [2, 1.5])
+    if (role === 'SHOES' || role === 'SOCKS') { const y = role === 'SHOES' ? 129 : 112; c.fillRect(33, y, 13, role === 'SHOES' ? 6 : 16); c.fillRect(54, y, 13, role === 'SHOES' ? 6 : 16); continue }
+    if (role === 'HANDHELD') { c.beginPath(); c.arc(14, 73, 5, 0, Math.PI * 2); c.fill(); continue }
     const points = shapes[role === 'BOTTOM' && s.categoryAny.some(x => x.includes('裙')) ? 'SKIRT' : role]; if (!points) continue
-    c.beginPath(); points.forEach(([x,y],i) => i ? c.lineTo(x,y) : c.moveTo(x,y)); c.closePath(); c.fill(); c.stroke()
-    if (s.patternMin) { c.save(); c.clip(); c.setStrokeStyle('#fff'); c.setLineWidth(2); for (let x = -140; x < 100; x += 7) { c.beginPath(); c.moveTo(x,0); c.lineTo(x+140,140); c.stroke() }; c.restore() }
+    c.beginPath(); points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); c.stroke()
+    if (s.patternMin) { c.save(); c.clip(); c.strokeStyle = '#fff'; c.lineWidth = 2; c.setLineDash([]); for (let x = -140; x < 100; x += 7) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 140, 140); c.stroke() }; c.restore() }
   }
-  c.draw()
+  picture.value = await new Promise<string>(resolve => uni.canvasToTempFilePath({ canvas: node, fileType: 'png', success: (result: any) => resolve(result.tempFilePath), fail: () => resolve('') } as any, instance?.proxy))
 }
-onMounted(draw); watch(() => props.slots, draw, { deep:true })
+onMounted(draw); watch(() => props.slots, draw, { deep: true })
 </script>
-<template><canvas :canvas-id="uid" :id="uid" class="preview" /></template>
-<style scoped lang="scss">.preview { width: 200rpx; height: 280rpx; background: $surface-alt; border-radius: $radius-sm; }</style>
+<template><view class="preview"><image v-if="picture" :src="picture" class="picture" mode="aspectFit" /><canvas type="2d" class="hidden-canvas" /></view></template>
+<style scoped lang="scss">.preview { width: 200rpx; height: 280rpx; background: $surface-alt; border-radius: $radius-sm; overflow: hidden; position: relative; }.picture { width: 100%; height: 100%; }.hidden-canvas { position: absolute; left: -400rpx; top: 0; width: 200rpx; height: 280rpx; }</style>

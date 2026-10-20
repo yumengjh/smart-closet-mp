@@ -8,6 +8,8 @@ import { useClosetStore } from '../../stores/closet'
 import { useSendOffStore } from '../../stores/sendOff'
 import { useProcessingStore } from '../../stores/processing'
 import AuthImage from '../AuthImage.vue'
+import { openTab } from '../../services/tab-route'
+import { openTasks } from '../closet/navigation'
 const toast = useToast(), message = useMessage(), closet = useClosetStore(), sendOff = useSendOffStore(), processing = useProcessingStore()
 const jobs = ref<RenderJob[]>([]), error = ref(''), cancelling = ref(''), phase = ref('deal'), showing = ref(false), game = ref(false)
 const active = ['QUEUED', 'WAITING_RESOURCE', 'RUNNING', 'CANCEL_REQUESTED']
@@ -17,15 +19,14 @@ let timer: ReturnType<typeof setInterval> | undefined, dressTimer: ReturnType<ty
 async function load() { if (!shown || !appVisible() || !closet.user || closet.user.mustChangePassword) return; try { jobs.value = await platformRequest('/api/me/image-render-jobs'); error.value = '' } catch (e) { error.value = String(e) } }
 function finish() { clearTimeout(dressTimer); clearTimeout(finishTimer); if (!sendOff.current) return; sendOff.land(sendOff.current.id); showing.value = false; toast.show('已开始生成，通常 1 分钟左右。可以先逛逛，好了会提醒你。'); void load() }
 watch(() => sendOff.current?.id, id => { if (!id || !shown) return; clearTimeout(dressTimer); clearTimeout(finishTimer); showing.value = true; phase.value = 'deal'; dressTimer = setTimeout(() => { phase.value = 'dress' }, 900); finishTimer = setTimeout(finish, 2300) })
-watch(() => closet.user?.username, name => { if (name && !closet.user?.mustChangePassword) processing.start(name); else processing.stop() }, { immediate: true })
 async function cancel(job: RenderJob) {
   try { await message.confirm({ title: '取消这次生成？', msg: '本平台将停止后续发布；已发出的请求无法保证上游停止或退还额度。', confirmButtonText: '取消任务', cancelButtonText: '继续等待' }) } catch { return }
   cancelling.value = job.id; try { await platformRequest(`/api/me/image-render-jobs/${job.id}/cancel`, 'POST', {}); await load() } catch (e) { toast.error(String(e)) } finally { cancelling.value = '' }
 }
-function openJob(j: RenderJob) { if (j.purpose === 'BASELINE') personal(); else { uni.setStorageSync('me.ootd.job', j.id); uni.switchTab({ url: '/pages/ootd/index' }) } }
-function personal() { uni.setStorageSync('me.settings.section', 'personal'); uni.switchTab({ url: '/pages/settings/index' }) }
-function tasks() { uni.navigateTo({ url: '/pkg-closet/tasks/index' }) }
-function openNotice() { const entry = processing.latestNotice; if (!entry) return; processing.viewed(entry); processing.dismissNotice(); if (entry.kind === 'render') { if (entry.href.includes('settings')) personal(); else { uni.setStorageSync('me.ootd.job', entry.id); uni.switchTab({ url: '/pages/ootd/index' }) } } else tasks() }
+function openJob(j: RenderJob) { if (j.purpose === 'BASELINE') personal(); else openTab('ootd', { job: j.id }) }
+function personal() { openTab('settings', { section: 'personal' }) }
+function tasks() { openTasks() }
+function openNotice() { const entry = processing.latestNotice; if (!entry) return; processing.viewed(entry); processing.dismissNotice(); if (entry.kind === 'render') { if (entry.href.includes('settings')) personal(); else openTab('ootd', { job: entry.id }) } else tasks() }
 const designs = ['卫衣', '牛仔裤', '球鞋', '棒球帽'], deck = ref<number[]>([]), first = ref<number | null>(null), second = ref<number | null>(null), matched = ref<number[]>([]), turns = ref(0)
 let cover: ReturnType<typeof setTimeout> | undefined
 function reset() { clearTimeout(cover); deck.value = [0, 1, 2, 3, 0, 1, 2, 3]; for (let i = 7; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck.value[i], deck.value[j]] = [deck.value[j]!, deck.value[i]!] }; first.value = null; second.value = null; matched.value = []; turns.value = 0 }

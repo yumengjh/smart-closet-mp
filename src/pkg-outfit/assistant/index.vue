@@ -19,6 +19,8 @@ import AgentProposal from '../../components/assistant/AgentProposal.vue'
 import AgentWorkspaceResult from '../../components/assistant/AgentWorkspaceResult.vue'
 import TraceSheet from '../../components/assistant/TraceSheet.vue'
 import { assistantContextName, assistantRoute, waitingTopics, welcomePrompts } from '../../components/assistant/chat-helpers'
+import { useAppearance } from '../../composables/useAppearance'
+const { pageStyle } = useAppearance()
 const closet = useClosetStore(), toast = useToast(), message = useMessage(), instance = getCurrentInstance()
 const route = ref('/assistant'), garmentQuery = ref('')
 const busy = ref(false), loading = ref(false), status = ref(''), error = ref(''), input = ref('')
@@ -129,7 +131,7 @@ onLoad(async query => {
 onReady(measure)
 onUnload(() => { abort?.abort(); clearTimeout(delightTimer) })
 </script>
-<template><view class="chat">
+<template><page-meta :page-style="pageStyle" /><view class="chat">
   <view class="head"><AssistantAvatar :size="84" :mood="mood" /><view class="identity"><text class="name">鱼搭助手</text><text class="sub">{{ session?.title || '今天也一起好好穿衣' }}</text></view>
     <view class="tools"><wd-button type="text" size="small" :disabled="busy" @click="newSession">新建</wd-button><wd-button type="text" size="small" :disabled="busy || loading" @click="historyOpen = true">记录</wd-button><wd-button type="text" size="small" @click="moreOpen = true">更多</wd-button></view></view>
   <view class="context"><view class="dot" /><text class="ctx">{{ contextName }}</text><text class="small">随页面更新</text></view>
