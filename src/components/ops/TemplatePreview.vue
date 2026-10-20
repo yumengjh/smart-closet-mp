@@ -20,7 +20,7 @@ async function draw() {
   const c = uni.createCanvasContext(props.uid, instance?.proxy), scale = uni.upx2px(200) / 100
   c.scale(scale, scale); c.clearRect(0,0,100,140); c.setFillStyle('#efe7dc'); c.beginPath(); c.arc(50,22,7,0,Math.PI*2); c.fill()
   for (const role of order) for (const s of props.slots.filter(slot => slot.roles.includes(role))) {
-    const color = s.colorAny.find(k => HEX[k]); c.setFillStyle(color ? HEX[color] : '#d6d6d6'); c.setStrokeStyle('#5f5f5f'); c.setLineWidth(.8); c.setLineDash(color ? [] : [2,1.5])
+    const color = s.colorAny.find(k => HEX[k]); c.setFillStyle(color ? HEX[color] : '#d6d6d6'); c.setStrokeStyle('#5f5f5f'); c.setLineWidth(.8); c.setLineDash(color ? [] : [2,1.5], 0)
     if (role === 'SHOES' || role === 'SOCKS') { const y = role === 'SHOES' ? 129 : 112; c.fillRect(33,y,13,role === 'SHOES' ? 6 : 16); c.fillRect(54,y,13,role === 'SHOES' ? 6 : 16); continue }
     if (role === 'HANDHELD') { c.beginPath(); c.arc(14,73,5,0,Math.PI*2); c.fill(); continue }
     const points = shapes[role === 'BOTTOM' && s.categoryAny.some(x => x.includes('裙')) ? 'SKIRT' : role]; if (!points) continue

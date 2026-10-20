@@ -31,7 +31,7 @@ function debounce(){clearTimeout(timer);query.page=1;selected.value=[];timer=set
 watch(()=>[query.category,query.color,query.season,imageStyle.value],debounce)
 function clearFilters(){query.q='';query.category='';query.color='';query.season='';imageStyle.value='';queryImage.value='';debounce()}
 function closeTag(tag:SearchTag){if(tag.imageStyle){if(tag.words.some(w=>query.q.includes(w)))query.q=removeWords(query.q,tag.words);else imageStyle.value='ALL'}else{query.q=removeWords(query.q,tag.words);if(tag.words.includes(query.category))query.category='';if(tag.words.some(w=>w&&query.color.startsWith(w)))query.color='';if(tag.words.includes(query.season))query.season=''}debounce()}
-async function attach(){try{const photos=await choosePhotos('album');const f=photos[0];if(!f)return;if(f.size>15*1024*1024)throw new Error('图片不能超过 15 MB。');const info=await uni.getImageInfo({src:f.tempFilePath});if(!['jpeg','jpg','png','webp'].includes(info.type))throw new Error('请选择 JPEG、PNG 或 WebP 图片。');queryImage.value=f.tempFilePath;debounce()}catch(e){toast.error(errorText(e))}}
+async function attach(){try{const photos=await choosePhotos('album');const f=photos[0];if(!f)return;if(f.size>15*1024*1024)throw new Error('图片不能超过 15 MB。');const info=await uni.getImageInfo({src:f.tempFilePath}) as {type?:string};if(!['jpeg','jpg','png','webp'].includes(info.type||''))throw new Error('请选择 JPEG、PNG 或 WebP 图片。');queryImage.value=f.tempFilePath;debounce()}catch(e){toast.error(errorText(e))}}
 function detach(){queryImage.value='';debounce()}
 function example(value:string){query.q=value;helpOpen.value=false;debounce()}
 function chooseSort(){uni.setStorageSync('closet.wardrobe.sort',query.sort);query.page=1;void load()}

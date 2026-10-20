@@ -67,12 +67,13 @@ async function showInfo() { if (!current.value?.garmentId) return; const id = cu
 function fullInfo() { if (info.value) navigateOutfitLink('/garment/' + info.value.id) }
 // Keep touch previews outside the persisted scene; one gesture creates exactly one undo step.
 type Touch = { clientX?: number; clientY?: number; pageX?: number; pageY?: number; x?: number; y?: number }
-type TouchEvent = { touches: Touch[] }
+type GestureEvent = { touches: Touch[] }
+const touchesOf = (event: any): GestureEvent => ({ touches: Array.from(event?.touches || []) as Touch[] })
 function point(t: Touch): Point { return { x: t.clientX ?? t.pageX ?? t.x ?? 0, y: t.clientY ?? t.pageY ?? t.y ?? 0 } }
 function midpoint(touches: Touch[]) { const a = point(touches[0]), b = touches[1] ? point(touches[1]) : a; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }
 function distance(touches: Touch[]) { if (touches.length < 2) return 0; const a = point(touches[0]), b = point(touches[1]); return Math.hypot(a.x - b.x, a.y - b.y) }
 let gesture: { boardId: string; initial: OutfitElement[]; base: OutfitElement[]; ids: string[]; origin: Point; distance: number; moved: boolean } | null = null
-function startGesture(event: TouchEvent, id: string) {
+function startGesture(event: GestureEvent, id: string) {
   if (props.board.locked || !event.touches.length) return
   if (!gesture) {
     if (!props.board.selectedIds.includes(id)) select(id, false)
@@ -80,7 +81,7 @@ function startGesture(event: TouchEvent, id: string) {
     gesture = { boardId: props.board.id, initial: items, base: items, ids: [...props.board.selectedIds], origin: midpoint(event.touches), distance: distance(event.touches), moved: false }
   } else if (event.touches.length > 1) { gesture.base = (preview.value || elements.value).map(e => ({ ...e })); gesture.origin = midpoint(event.touches); gesture.distance = distance(event.touches) }
 }
-function moveGesture(event: TouchEvent) {
+function moveGesture(event: GestureEvent) {
   if (!gesture || !event.touches.length || props.board.locked) return
   if (event.touches.length > 1 && !gesture.distance) { gesture.base = (preview.value || elements.value).map(e => ({ ...e })); gesture.origin = midpoint(event.touches); gesture.distance = distance(event.touches); return }
   const p = midpoint(event.touches), pxScale = boardWidth.value * zoom.value / 1080
@@ -98,7 +99,7 @@ async function exportPng() {
   exporting.value = true
   try {
     await nextTick()
-    const node = await new Promise<any>((resolve, reject) => uni.createSelectorQuery().in(instance?.proxy).select('#outfit-export').fields({ node: true, size: true } as any, (result: any) => result?.node ? resolve(result.node) : reject(new Error('画板尚未就绪，请在微信中重试导出。'))).exec())
+    const node = await new Promise<any>((resolve, reject) => uni.createSelectorQuery().in(instance?.proxy as any).select('#outfit-export').fields({ node: true, size: true } as any, (result: any) => result?.node ? resolve(result.node) : reject(new Error('画板尚未就绪，请在微信中重试导出。'))).exec())
     node.width = 1080; node.height = 1350
     const context = node.getContext('2d'); context.fillStyle = '#ffffff'; context.fillRect(0, 0, 1080, 1350)
     for (const item of [...props.board.scene.elements].sort((a, b) => a.zIndex - b.zIndex)) {
@@ -107,7 +108,7 @@ async function exportPng() {
       context.save(); context.translate(item.x, item.y); context.rotate(item.rotation * Math.PI / 180); if (item.flipX) context.scale(-1, 1)
       context.drawImage(image, item.cropX * image.width, item.cropY * image.height, item.cropWidth * image.width, item.cropHeight * image.height, -item.width / 2, -item.height / 2, item.width, item.height); context.restore()
     }
-    const path = await new Promise<string>((resolve, reject) => uni.canvasToTempFilePath({ canvas: node, width: 1080, height: 1350, destWidth: 1080, destHeight: 1350, fileType: 'png', success: result => resolve(result.tempFilePath), fail: reject } as any, instance?.proxy))
+    const path = await new Promise<string>((resolve, reject) => uni.canvasToTempFilePath({ canvas: node, width: 1080, height: 1350, destWidth: 1080, destHeight: 1350, fileType: 'png', success: (result: any) => resolve(result.tempFilePath), fail: reject } as any, instance?.proxy))
     await new Promise<void>((resolve, reject) => uni.saveImageToPhotosAlbum({ filePath: path, success: () => resolve(), fail: reject }))
     toast.success('搭配图片已保存到相册。')
   } catch (e) { const msg = String((e as { errMsg?: string })?.errMsg || ''); toast.error(/auth|deny/i.test(msg) ? '请在微信设置中允许保存到相册后重试。' : e instanceof Error ? e.message : '导出图片失败，请重试。') } finally { exporting.value = false }
@@ -118,7 +119,7 @@ defineExpose({ exportPng, clearSelection })
   <view class="toolbar"><view class="actions"><wd-button size="small" plain :disabled="!board.undo.length || !!board.locked" @click="undo">撤销</wd-button><wd-button size="small" plain :disabled="!board.redo.length || !!board.locked" @click="redo">重做</wd-button></view><view class="actions"><wd-button type="text" size="small" @click="zoom = clamp(zoom / 1.2, .5, 3)">−</wd-button><text class="small">{{ Math.round(zoom * 100) }}%</text><wd-button type="text" size="small" @click="zoom = clamp(zoom * 1.2, .5, 3)">＋</wd-button><wd-button type="text" size="small" @click="fit">适应</wd-button></view></view>
   <view v-if="failedImage" class="notice warning">{{ failedImage }}<wd-button type="text" @click="checkImages">重试</wd-button></view>
   <scroll-view scroll-x scroll-y class="board-scroll"><view class="board-area" :style="{ width: boardWidth * zoom + 'px', height: boardWidth * zoom * 1.25 + 'px' }"><view class="board" :style="{ width: boardWidth * zoom + 'px', height: boardWidth * zoom * 1.25 + 'px' }" @tap="clearSelection">
-    <view v-for="item in elements" :key="keyFor(item)" class="sticker" :class="{ selected: board.selectedIds.includes(keyFor(item)) }" :style="frameStyle(item)" @tap.stop="select(keyFor(item))" @longpress.stop="inspect(keyFor(item))" @touchstart.stop="startGesture($event, keyFor(item))" @touchmove.stop.prevent="moveGesture" @touchend.stop="endGesture" @touchcancel.stop="cancelGesture"><view class="artwork" :style="{ transform: item.flipX ? 'scaleX(-1)' : '' }"><AuthImage :src="item.assetUrl" mode="scaleToFill" :style="imageCropStyle(item)" /></view></view>
+    <view v-for="item in elements" :key="keyFor(item)" class="sticker" :class="{ selected: board.selectedIds.includes(keyFor(item)) }" :style="frameStyle(item)" @tap.stop="select(keyFor(item))" @longpress.stop="inspect(keyFor(item))" @touchstart.stop="startGesture(touchesOf($event), keyFor(item))" @touchmove.stop.prevent="moveGesture(touchesOf($event))" @touchend.stop="endGesture" @touchcancel.stop="cancelGesture"><view class="artwork" :style="{ transform: item.flipX ? 'scaleX(-1)' : '' }"><AuthImage :src="item.assetUrl" mode="scaleToFill" :style="imageCropStyle(item)" /></view></view>
     <view v-if="!elements.length" class="board-empty"><wd-icon name="picture" size="72rpx" /><view class="title">把喜欢的衣物放上画板</view><text class="line small">从衣柜选择单品，组合成一套穿搭。</text><wd-button size="small" :disabled="!!board.locked" @click.stop="pickerOpen = true">加入贴纸</wd-button></view>
   </view></view></scroll-view>
   <text class="line small">{{ elements.length }} 张贴纸 · 点选后拖动，双指缩放，长按调整属性</text><view class="editor-actions"><wd-button size="small" :disabled="!!board.locked" @click="pickerOpen = true">加入贴纸</wd-button><wd-button size="small" plain :disabled="!selected.length || !!board.locked" @click="inspectorOpen = true">属性{{ selected.length > 1 ? ` · ${selected.length}` : '' }}</wd-button><wd-button size="small" plain @click="layersOpen = true">图层</wd-button><wd-button size="small" plain :loading="exporting" :disabled="!elements.length || !!failedImage || imageLoading || !!board.locked" @click="exportPng">导出图片</wd-button><wd-button type="text" size="small" @click="helpOpen = true">操作帮助</wd-button></view>

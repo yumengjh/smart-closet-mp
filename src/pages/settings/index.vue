@@ -29,13 +29,13 @@ const currentLabel = computed(() => links.value.find(x => x.key === section.valu
 const admins = [{ path: 'templates', label: '搭配模板审核', note: '审核经典搭法模板，通过后参与推荐加分。' }, { path: 'ootd-samples', label: '整套穿搭样本', note: '收集整套穿搭图，提取物品与姿势，审核后生成搭配模板。' }, { path: 'processing', label: '任务与资源', note: '查看积压、共享账户与调度容量。' }, { path: 'users', label: '用户管理', note: '管理用户、登录会话、每日额度和邀请码。' }]
 // The forced-password screen owns navigation until the password request succeeds.
 const guardedApis = ['switchTab', 'navigateTo', 'redirectTo', 'reLaunch', 'navigateBack'] as const
-const guard = { invoke: (args: { url?: string }) => { if (!firstLogin.value) return true; return Boolean(args.url?.startsWith('/pages/settings/index') || args.url?.startsWith('/pages/login/index')) } }
+const guard: UniNamespace.InterceptorOptions = { invoke: (args: { url?: string }) => { if (!firstLogin.value) return true; return Boolean(args.url?.startsWith('/pages/settings/index') || args.url?.startsWith('/pages/login/index')) } }
 let guarded = false
 function syncGuard() {
-  if (firstLogin.value) { uni.hideTabBar(); if (!guarded) { guardedApis.forEach(api => uni.addInterceptor(api, guard)); guarded = true }; section.value = 'account' }
+  if (firstLogin.value) { uni.hideTabBar(); if (!guarded) { guardedApis.forEach(api => uni.addInterceptor(api as string, guard)); guarded = true }; section.value = 'account' }
   else { releaseGuard(); uni.showTabBar() }
 }
-function releaseGuard() { if (guarded) { guardedApis.forEach(api => uni.removeInterceptor(api, guard)); guarded = false } }
+function releaseGuard() { if (guarded) { guardedApis.forEach(api => uni.removeInterceptor(api as string)); guarded = false } }
 watch(firstLogin, syncGuard)
 onBackPress(() => firstLogin.value)
 onLoad(query => { forced.value = query?.firstLogin === '1'; section.value = String(query?.section || ''); syncGuard() })

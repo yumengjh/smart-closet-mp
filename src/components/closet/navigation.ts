@@ -8,6 +8,6 @@ export const settings = () => uni.switchTab({url:'/pages/settings/index'})
 export function outfitWith(id:string) { uni.setStorageSync('closet.outfit-with',id); uni.switchTab({url:'/pages/outfits/index'}) }
 export const errorText = (e:unknown, fallback='操作失败，请稍后重试。') => e instanceof Error ? e.message : fallback
 export async function choosePhotos(source:'album'|'camera',count=1) {
-  try { const result=await uni.chooseMedia({count,mediaType:['image'],sourceType:[source]}); return result.tempFiles }
+  try { const result=await uni.chooseMedia({count,mediaType:['image'],sourceType:[source]}) as unknown as {tempFiles?:{tempFilePath:string;name?:string;size:number}[]}; return result.tempFiles||[] }
   catch(e) { if(String((e as {errMsg?:string})?.errMsg).includes('cancel')) return []; throw new Error('无法读取照片，请检查相机或相册权限后重试。') }
 }

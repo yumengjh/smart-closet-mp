@@ -43,7 +43,9 @@ async function permission(purpose: string, checked: boolean) {
 }
 function exportDoc(d: MemoryDocument) {
   // #ifdef MP-WEIXIN
+  // @ts-ignore
   const path = `${wx.env.USER_DATA_PATH}/${d.kind === 'GENERAL' ? '通用长期记忆' : '敏感长期记忆'}.md`
+  // @ts-ignore
   wx.getFileSystemManager().writeFile({ filePath: path, data: d.content, encoding: 'utf8', success: () => wx.shareFileMessage({ filePath: path }), fail: () => toast.error('导出未完成，请稍后重试。') })
   // #endif
   // #ifndef MP-WEIXIN
