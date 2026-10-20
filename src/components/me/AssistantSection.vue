@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useToast } from 'wot-design-uni'
 import { agentRequest, type Models, type Quota } from '../../services/me'
 type MemoryDocument = { kind: string; content: string; revision: number; updatedAt: number }
@@ -54,7 +54,9 @@ function exportDoc(d: MemoryDocument) {
 }
 function sensitive(text: string) { return /身高|体重|体型|身材|围度|胸围|腰围|臀围|病史|手机号|身份证|地址/.test(text) }
 function help() { uni.navigateTo({ url: '/pkg-closet/help/index?article=03-assistant' }) }
-onMounted(() => { void load(); void loadMemory() })
+function onMemoryChanged() { void loadMemory(true) }
+onMounted(() => { void load(); void loadMemory(); uni.$on('closet-agent-memory-changed', onMemoryChanged) })
+onUnmounted(() => { uni.$off('closet-agent-memory-changed', onMemoryChanged) })
 </script>
 <template>
   <view class="stack">

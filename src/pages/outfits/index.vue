@@ -44,7 +44,7 @@ function more(outfit: Outfit) { actionOutfit.value = outfit; actionsOpen.value =
 async function action(event: { index: number }) {
   const o = actionOutfit.value; actionsOpen.value = false; if (!o) return
   if (event.index === 0) openEditor(o.id)
-  else if (event.index === 1) { try { await openOutfitDraft(closet.user!.username, o.scene, `${o.name} 副本`) } catch (e) { toast.error(e instanceof Error ? e.message : '复制搭配失败。') } }
+  else if (event.index === 1) { try { await openOutfitDraft(closet.user!.username, o.scene, `${o.name} 副本`.slice(0, 100)) } catch (e) { toast.error(e instanceof Error ? e.message : '复制搭配失败。') } }
   else if (event.index === 2) {
     if (wearing.value) return; wearing.value = true
     try { const r = await recommendApi.wear({ outfitId: o.id }); wornDates.value[o.id] = r.wornOn; toast.success('已记下今天穿了这套。') } catch (e) { toast.error(e instanceof Error ? e.message : '没有记录成功。') } finally { wearing.value = false }

@@ -80,7 +80,7 @@
         {
           "path": "tasks/index",
           "style": {
-            "navigationBarTitleText": "处理中心",
+            "navigationBarTitleText": "任务记录",
             "enablePullDownRefresh": true
           }
         },

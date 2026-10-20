@@ -4,16 +4,17 @@ import { useToast } from 'wot-design-uni'
 import { similarApi, type DuplicatePair, type DuplicateScan } from '../../services/me'
 import type { ImageModelStatus } from '../../services/api'
 import { appVisible } from '../../services/lifecycle'
+import { useNotificationStore } from '../../stores/notifications'
 import AuthImage from '../AuthImage.vue'
 import { openGarment } from '../closet/navigation'
-const toast = useToast(), pairs = ref<DuplicatePair[]>([]), scan = ref<DuplicateScan | null>(null), imageModel = ref<ImageModelStatus | null>(null)
+const toast = useToast(), notifications = useNotificationStore(), pairs = ref<DuplicatePair[]>([]), scan = ref<DuplicateScan | null>(null), imageModel = ref<ImageModelStatus | null>(null)
 const loading = ref(true), starting = ref(false), error = ref(''), busy = ref('')
 const scanning = computed(() => ['QUEUED', 'RUNNING'].includes(scan.value?.status || ''))
 let timer: ReturnType<typeof setTimeout> | undefined, alive = true
 async function load() { loading.value = true; try { const r = await similarApi.duplicates(); pairs.value = r.items; imageModel.value = r.imageModel || null; error.value = '' } catch (e) { error.value = String(e) } finally { loading.value = false } }
 async function watchScan() {
   if (!alive) return
-  try { if (appVisible()) { const was = scanning.value, r = await similarApi.scanStatus(); scan.value = r.scan; imageModel.value = r.imageModel || imageModel.value; if (was && !scanning.value) { await load(); if (scan.value?.status === 'DONE') toast.success(scan.value.pairs ? `扫描完成：发现 ${scan.value.pairs} 对可能重复的衣物。` : '扫描完成：没有发现可能重复的衣物。'); else toast.error('扫描没有完成，请稍后再试。') } } }
+  try { if (appVisible()) { const was = scanning.value, r = await similarApi.scanStatus(); scan.value = r.scan; imageModel.value = r.imageModel || imageModel.value; if (was && !scanning.value) { await load(); await notifications.refresh(); if (scan.value?.status === 'DONE') toast.success(scan.value.pairs ? `扫描完成：发现 ${scan.value.pairs} 对可能重复的衣物。` : '扫描完成：没有发现可能重复的衣物。'); else toast.error('扫描没有完成，请稍后再试。') } } }
   catch { /* Preserve scan state and retry. */ }
   if (alive) timer = setTimeout(watchScan, scanning.value ? 2000 : 10000)
 }

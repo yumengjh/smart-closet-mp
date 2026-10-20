@@ -115,10 +115,10 @@ onUnmounted(() => clearInterval(timer))
     <view v-else class="section stack">
       <view><view class="title">个人资料</view><view class="note">除性别外都可以不填，生成模特时会用示意默认值。</view></view>
       <wd-radio-group v-model="profile.sex" shape="button" inline><wd-radio value="MALE">男</wd-radio><wd-radio value="FEMALE">女</wd-radio></wd-radio-group>
-      <wd-input v-model="profile.heightCm" label="身高（cm）" type="digit" placeholder="未填写" />
-      <wd-input v-model="profile.weightKg" label="体重（kg）" type="digit" placeholder="未填写" />
+      <wd-input v-model="profile.heightCm" label="身高（cm）" type="digit" :min="1" :max="300" placeholder="未填写" />
+      <wd-input v-model="profile.weightKg" label="体重（kg）" type="digit" :min="1" :max="600" placeholder="未填写" />
       <wd-input v-model="profile.bodyShape" label="身材特点" :maxlength="500" placeholder="例如：肩较宽、梨形身材" />
-      <wd-input v-for="m in measurements" :key="m.key" v-model="profile.measurements[m.key]" :label="m.label + '（cm）'" type="digit" placeholder="可选" />
+      <wd-input v-for="m in measurements" :key="m.key" v-model="profile.measurements[m.key]" :label="m.label + '（cm）'" type="digit" :min="1" placeholder="可选" />
       <view class="title">穿搭偏好</view>
       <wd-input v-for="p in preferences" :key="p.key" v-model="profile.preferences[p.key]" :label="p.label" :maxlength="500" placeholder="可选" />
       <view v-if="dirty" class="note">有未保存的修改</view><wd-button :loading="saving" @click="save">保存资料</wd-button>

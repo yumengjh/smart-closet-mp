@@ -69,7 +69,7 @@ async function signOut() {
       <template v-if="!section">
         <wd-cell-group border><wd-cell v-for="link in links" :key="link.key" :title="link.label" :label="link.note" is-link @click="select(link.key)" /></wd-cell-group>
         <wd-cell-group v-if="closet.user?.role === 'ADMIN'" title="管理员" border><template v-for="admin in admins" :key="admin.path"><wd-cell v-if="admin.path !== 'users' || !portable" :title="admin.label" :label="admin.note" is-link @click="go('/pkg-admin/' + admin.path + '/index')" /></template></wd-cell-group>
-        <wd-cell-group border><wd-cell title="鱼搭助手" label="问穿搭、整理衣柜、查使用方法" is-link @click="go('/pkg-outfit/assistant/index?from=settings')" /><wd-cell title="帮助" is-link @click="go('/pkg-closet/help/index')" /><wd-cell title="处理中心" is-link @click="go('/pkg-closet/tasks/index')" /><wd-cell title="回收站" label="恢复已删除的衣物" is-link @click="go('/pkg-closet/trash/index')" /></wd-cell-group>
+        <wd-cell-group border><wd-cell title="鱼搭助手" label="问穿搭、整理衣柜、查使用方法" is-link @click="go('/pkg-outfit/assistant/index?from=settings')" /><wd-cell title="帮助" is-link @click="go('/pkg-closet/help/index')" /><wd-cell title="任务记录" is-link @click="go('/pkg-closet/tasks/index')" /><wd-cell title="回收站" label="恢复已删除的衣物" is-link @click="go('/pkg-closet/trash/index')" /></wd-cell-group>
         <view class="note">前端 {{ formatVersion(webBuild) }}<view>服务端 {{ serverVersion }}</view></view><wd-button plain @click="signOut">退出登录</wd-button>
       </template>
       <template v-else>
