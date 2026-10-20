@@ -1,0 +1,14 @@
+.stack { display: flex; flex-direction: column; gap: 24rpx; }
+.section { padding: 28rpx; background: $surface; border: 1rpx solid $line; border-radius: $radius-lg; min-width: 0; }
+.heading { font-size: 36rpx; font-weight: 600; margin-bottom: 16rpx; }
+.title { font-size: 30rpx; font-weight: 600; margin-bottom: 12rpx; }
+.note { color: $muted; font-size: 25rpx; line-height: 1.8; margin: 12rpx 0 20rpx; overflow-wrap: anywhere; }
+.error { color: $danger; background: #fff2f0; padding: 20rpx; border-radius: $radius-sm; white-space: pre-wrap; font-size: 26rpx; }
+.success { color: $success; padding: 16rpx 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; flex-wrap: wrap; }
+.actions { display: flex; gap: 16rpx; flex-wrap: wrap; margin-top: 20rpx; }
+.item { padding: 22rpx 0; border-bottom: 1rpx solid $line; overflow-wrap: anywhere; }
+.sheet { padding: 32rpx 32rpx calc(40rpx + env(safe-area-inset-bottom)); max-height: 84vh; overflow-y: auto; box-sizing: border-box; }
+.media { height: 560rpx; background: $surface-alt; border-radius: $radius-md; overflow: hidden; }
+.thumbs { display: flex; gap: 16rpx; flex-wrap: wrap; }
+.thumb { width: 180rpx; height: 220rpx; }

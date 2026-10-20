@@ -1,0 +1,3 @@
+<script setup lang="ts">defineProps<{page:number;pages:number;busy?:boolean;previousText?:string;nextText?:string}>();defineEmits<{(e:'change',delta:number):void}>()</script>
+<template><view class="pager"><wd-button size="small" type="text" :disabled="busy||page<=1" @click="$emit('change',-1)">{{previousText||'上一页'}}</wd-button><text>{{page}} / {{pages}}</text><wd-button size="small" type="text" :disabled="busy||page>=pages" @click="$emit('change',1)">{{nextText||'下一页'}}</wd-button></view></template>
+<style lang="scss" scoped>.pager{display:flex;align-items:center;justify-content:space-between;gap:20rpx;padding:16rpx 24rpx;margin:24rpx 0;background:$surface;border:2rpx solid $line;border-radius:60rpx;position:sticky;bottom:28rpx;z-index:5}</style>

@@ -23,25 +23,29 @@
     {
       "path": "pages/wardrobe/index",
       "style": {
+        "enablePullDownRefresh": true,
         "navigationBarTitleText": "我的衣柜"
       }
     },
     {
       "path": "pages/pending/index",
       "style": {
+        "enablePullDownRefresh": true,
         "navigationBarTitleText": "未入柜"
       }
     },
     {
       "path": "pages/outfits/index",
       "style": {
-        "navigationBarTitleText": "组合台"
+        "navigationBarTitleText": "组合台",
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/ootd/index",
       "style": {
-        "navigationBarTitleText": "OOTD 试穿"
+        "navigationBarTitleText": "OOTD 试穿",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -76,19 +80,22 @@
         {
           "path": "tasks/index",
           "style": {
-            "navigationBarTitleText": "处理中心"
+            "navigationBarTitleText": "处理中心",
+            "enablePullDownRefresh": true
           }
         },
         {
           "path": "trash/index",
           "style": {
-            "navigationBarTitleText": "回收站"
+            "navigationBarTitleText": "回收站",
+            "enablePullDownRefresh": true
           }
         },
         {
           "path": "help/index",
           "style": {
-            "navigationBarTitleText": "帮助"
+            "navigationBarTitleText": "帮助",
+            "enablePullDownRefresh": true
           }
         }
       ]
@@ -116,25 +123,29 @@
         {
           "path": "users/index",
           "style": {
-            "navigationBarTitleText": "用户管理"
+            "navigationBarTitleText": "用户管理",
+            "enablePullDownRefresh": true
           }
         },
         {
           "path": "processing/index",
           "style": {
-            "navigationBarTitleText": "处理监控"
+            "navigationBarTitleText": "处理监控",
+            "enablePullDownRefresh": true
           }
         },
         {
           "path": "templates/index",
           "style": {
-            "navigationBarTitleText": "模板审核"
+            "navigationBarTitleText": "模板审核",
+            "enablePullDownRefresh": true
           }
         },
         {
           "path": "ootd-samples/index",
           "style": {
-            "navigationBarTitleText": "OOTD 样本"
+            "navigationBarTitleText": "OOTD 样本",
+            "enablePullDownRefresh": true
           }
         }
       ]

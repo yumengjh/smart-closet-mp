@@ -1,0 +1,26 @@
+.ops-page { color: $ink; }
+.ops-heading { margin: 12rpx 0 32rpx; }
+.ops-eyebrow { color: $accent; font-size: 22rpx; letter-spacing: 3rpx; margin-bottom: 12rpx; }
+.ops-title { font-size: 44rpx; font-weight: 650; line-height: 1.35; }
+.ops-subtitle, .ops-copy { color: $muted; font-size: 26rpx; line-height: 1.8; margin-top: 12rpx; overflow-wrap: anywhere; }
+.ops-section { margin: 24rpx 0; padding: 26rpx; background: $surface; border: 1rpx solid $line; border-radius: $radius-lg; }
+.ops-h2 { font-size: 32rpx; font-weight: 600; margin-bottom: 16rpx; }
+.ops-h3 { font-size: 28rpx; font-weight: 600; margin: 20rpx 0 12rpx; }
+.ops-row { padding: 20rpx 0; border-bottom: 1rpx solid $line; overflow-wrap: anywhere; }
+.ops-row:last-child { border-bottom: 0; }
+.ops-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16rpx; margin: 20rpx 0 4rpx; }
+.ops-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16rpx; }
+.ops-meta { color: $muted-subtle; font-size: 23rpx; line-height: 1.7; margin-top: 8rpx; overflow-wrap: anywhere; }
+.ops-tags { display: flex; gap: 10rpx; flex-wrap: wrap; align-items: center; }
+.ops-alert { background: $accent-soft; color: $accent-strong; padding: 22rpx; border-radius: $radius-sm; line-height: 1.75; margin: 16rpx 0; font-size: 25rpx; overflow-wrap: anywhere; }
+.ops-error { color: $danger; background: rgba($danger,.07); }
+.ops-warning { color: $warning; background: rgba($warning,.07); }
+.ops-stat { flex: 1; padding: 20rpx 12rpx; border-radius: $radius-sm; background: $surface-alt; font-size: 23rpx; color: $muted; }
+.ops-stat-number { display: block; font-size: 40rpx; color: $ink; font-weight: 600; }
+.ops-thumb { width: 128rpx; height: 144rpx; flex: none; border-radius: $radius-sm; overflow: hidden; background: $surface-alt; }
+.ops-media-row { display: flex; gap: 24rpx; align-items: flex-start; }
+.ops-grow { flex: 1; min-width: 0; }
+.ops-photo { height: 560rpx; margin: 16rpx 0; border-radius: $radius-sm; overflow: hidden; }
+.ops-secret { padding: 24rpx; background: $surface-alt; border-radius: $radius-sm; font-size: 32rpx; word-break: break-all; margin: 16rpx 0; }
+.ops-field { margin: 20rpx 0; }
+.ops-label { display: block; font-size: 26rpx; margin-bottom: 14rpx; color: $muted; }

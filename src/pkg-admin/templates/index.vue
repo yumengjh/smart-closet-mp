@@ -1,7 +1,31 @@
 <script setup lang="ts">
-// TODO: port from ../smart-closet
+import { computed, ref, watch } from 'vue'
+import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { useToast } from 'wot-design-uni'
+import { adminTemplateApi, type TemplateEntry } from '../../services/admin'
+import { playSound } from '../../services/sound'
+import { metaText, expired, slotText } from '../../components/ops/templateLabels'
+import { requireAdmin, errorText } from '../../components/ops/utils'
+import TemplatePreview from '../../components/ops/TemplatePreview.vue'
+import OpsSheet from '../../components/ops/OpsSheet.vue'
+const toast = useToast(), allowed = ref(false), items = ref<TemplateEntry[]>([]), active = ref(0), loading = ref(true), error = ref(''), busy = ref(''), selected = ref<string[]>([]), filter = ref('PENDING_REVIEW'), kind = ref('ALL'), count = ref(20), preview = ref<TemplateEntry>()
+const STATUS: Record<string,string> = { PENDING_REVIEW:'待审核', APPROVED:'已通过', REJECTED:'已停用' }
+const shown = computed(() => items.value.filter(i => (filter.value === 'ALL' || i.reviewStatus === filter.value) && (kind.value === 'ALL' || (i.meta?.kind || 'CLASSIC') === kind.value)))
+watch([filter,kind], () => { count.value = 20 })
+async function load() { if (!allowed.value) return; loading.value = true; error.value = ''; try { const r = await adminTemplateApi.list(); items.value = r.items; active.value = r.active } catch(e) { error.value = errorText(e, '模板列表暂时无法加载。') } finally { loading.value = false } }
+async function review(id: string, body: Record<string, unknown>) {
+  if (busy.value) return; busy.value = id
+  try { const next = await adminTemplateApi.review(id,body); items.value = items.value.map(i => i.id === id ? next : i); active.value = items.value.filter(i => i.reviewStatus === 'APPROVED' && i.enabled).length; playSound('tap') } catch(e) { playSound('error'); toast.error(errorText(e, '保存失败。')) } finally { busy.value = '' }
+}
+function bonus(id: string, event: { value: number | string }) { const value = Number(event.value); if (Number.isFinite(value) && value >= 0 && value <= 5 && items.value.find(i => i.id === id)?.bonus !== value) void review(id, { bonus:value }) }
+async function batch(status: 'APPROVED' | 'REJECTED') { if (busy.value || !selected.value.length) return; busy.value = 'batch'; try { await adminTemplateApi.batch([...selected.value], status); toast.success(`已${status === 'APPROVED' ? '通过' : '停用'} ${selected.value.length} 条。`); selected.value = []; await load(); playSound('success') } catch(e) { playSound('error'); toast.error(errorText(e, '批量操作失败。')) } finally { busy.value = '' } }
+onLoad(async () => { allowed.value = await requireAdmin(); await load() }); onPullDownRefresh(async () => { try { await load() } finally { uni.stopPullDownRefresh() } }); onReachBottom(() => { count.value += 20 })
 </script>
-
 <template>
-  <view class="page"><wd-status-tip image="content" tip="模板审核：建设中" /></view>
+  <view v-if="allowed" class="page ops-page"><view class="ops-heading"><text class="ops-title">搭配模板审核</text><view class="ops-subtitle">通过并启用的模板命中时加分（最多 5 分），卡片显示“经典搭法”。审核结果存数据库，立即生效，不改动资源文件。</view></view><view v-if="error" class="ops-alert ops-error">{{ error }}<wd-button type="text" size="small" @click="load">重试</wd-button></view>
+    <wd-tabs v-model="filter"><wd-tab v-for="(title,key) in STATUS" :key="key" :name="key" :title="title" /><wd-tab name="ALL" title="全部" /></wd-tabs><wd-picker v-model="kind" label="类型" :columns="[{ value:'ALL',label:'全部类型' },{ value:'CLASSIC',label:'经典' },{ value:'TREND',label:'流行' }]" /><view class="ops-meta">共 {{ items.length }} 条 · 生效 {{ active }} 条</view><view class="ops-actions"><wd-button size="small" :disabled="!selected.length || !!busy" :loading="busy === 'batch'" @click="batch('APPROVED')">批量通过（{{ selected.length }}）</wd-button><wd-button size="small" plain :disabled="!selected.length || !!busy" @click="batch('REJECTED')">批量停用</wd-button></view>
+    <wd-skeleton v-if="loading" :row-col="[1,1,1,1]" animation="gradient" /><wd-checkbox-group v-else v-model="selected"><view v-for="record in shown.slice(0,count)" :key="record.id" class="ops-section"><wd-checkbox :model-value="record.id" :disabled="!!busy">{{ record.text }}</wd-checkbox><view class="ops-media-row ops-field"><view @tap="preview = record"><TemplatePreview :slots="record.slots" :uid="`s-${record.id}`" /><wd-button type="text" size="small" @click="preview = record">查看示意</wd-button></view><view class="ops-grow"><view class="ops-tags"><wd-tag v-if="record.meta?.kind === 'TREND'" type="warning" plain>流行</wd-tag><wd-tag v-if="expired(record.meta)" plain>已过期</wd-tag><wd-tag :type="record.reviewStatus === 'APPROVED' ? 'success' : record.reviewStatus === 'REJECTED' ? 'danger' : 'default'" plain>{{ STATUS[record.reviewStatus] }}</wd-tag><wd-tag v-if="!record.enabled" plain>已关闭</wd-tag></view><view class="ops-copy">{{ metaText(record.meta) }}</view><view v-if="record.meta?.reference" class="ops-meta">参考：{{ record.meta.reference }}</view><view class="ops-meta">{{ record.id }}</view></view></view><view v-for="(slot,i) in record.slots" :key="i" class="ops-row"><text class="ops-copy">{{ slotText(slot) }}</text><view v-if="slot.describe?.length" class="ops-meta">例：{{ slot.describe.join('、') }}</view></view><view class="ops-field"><text class="ops-label">加分</text><wd-input-number :model-value="record.bonus" :min="0" :max="5" :step="0.5" :precision="1" :disabled="!!busy" @change="bonus(record.id,$event)" /></view><view class="ops-actions"><wd-button v-if="record.reviewStatus !== 'APPROVED'" size="small" :loading="busy === record.id" :disabled="!!busy" @click="review(record.id,{ reviewStatus:'APPROVED',enabled:true })">通过</wd-button><wd-button v-if="record.reviewStatus !== 'REJECTED'" size="small" plain :disabled="!!busy" @click="review(record.id,{ reviewStatus:'REJECTED' })">停用</wd-button><wd-button v-if="record.reviewStatus !== 'PENDING_REVIEW'" size="small" type="text" :disabled="!!busy" @click="review(record.id,{ reviewStatus:'PENDING_REVIEW' })">退回待审</wd-button></view></view></wd-checkbox-group><wd-status-tip v-if="!loading && !shown.length && !error" image="content" tip="暂无模板" /><wd-button v-if="count < shown.length" type="text" @click="count += 20">加载更多</wd-button>
+    <OpsSheet :model-value="!!preview" :title="preview?.text || '搭配示意'" @update:model-value="preview = undefined"><template v-if="preview"><TemplatePreview :slots="preview.slots" :uid="`l-${preview.id}`" /><view v-for="(s,i) in preview.slots" :key="i" class="ops-row">{{ s.describe?.length ? s.describe.join(' 或 ') : slotText(s) }}</view></template></OpsSheet>
+  </view><wd-toast />
 </template>
+<style scoped lang="scss">@import '../../components/ops/shared.scss';</style>
