@@ -106,7 +106,8 @@ async function fetchCsrf(): Promise<string> {
   return csrfToken
 }
 export async function writeHeaders(): Promise<Record<string, string>> {
-  return { Cookie: cookieHeader(), 'X-XSRF-TOKEN': await fetchCsrf() }
+  const token = await fetchCsrf()
+  return { Cookie: cookieHeader(), 'X-XSRF-TOKEN': token }
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -134,40 +135,126 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return (status === 204 ? undefined : response.data) as T
 }
 
-/** multipart upload of one local file (camera / album temp path) with extra form fields. */
-export async function upload<T>(path: string, filePath: string, options: { name?: string; formData?: Record<string, string>; timeoutMs?: number; idempotencyKey?: string } = {}): Promise<T> {
-  const header = await writeHeaders()
-  if (options.idempotencyKey) header['Idempotency-Key'] = options.idempotencyKey
-  const response = await new Promise<UniApp.UploadFileSuccessCallbackResult>((resolve, reject) => {
-    uni.uploadFile({
-      url: apiUrl(path), filePath, name: options.name ?? 'file', formData: options.formData, header, timeout: options.timeoutMs ?? 120000,
-      success: resolve,
-      fail: () => reject(new HttpError('上传中断，尚无法确认是否已提交。', 0, undefined, true)),
-    })
-  })
-  storeCookies(response as unknown as { header?: Record<string, unknown> })
-  let data: { code?: string; message?: string } & Record<string, unknown> = {}
-  try { data = response.data ? JSON.parse(response.data) : {} } catch { /* non-JSON error page */ }
-  if (response.statusCode >= 400) {
-    if (response.statusCode === 401) uni.$emit('closet-session-expired')
-    throw new HttpError(data.message || `上传失败 (${response.statusCode})`, response.statusCode, data.code, response.statusCode >= 500)
-  }
-  return data as T
+export type UploadOptions = {
+  name?: string; formData?: Record<string, string>; timeoutMs?: number; idempotencyKey?: string
+  headers?: Record<string, string>; onProgress?: (percent: number) => void
+  /** Spring typed request parts require application/json for these fields. */
+  jsonFields?: string[]
 }
 
-/**
- * POST that streams `text/event-stream` back (assistant replies). WeChat delivers chunks through onChunkReceived;
- * other targets fall back to one response at the end. `onEvent` receives each parsed SSE event.
- */
-export async function streamPost(path: string, body: unknown, onEvent: (event: { event: string; data: string }) => void, options: { timeoutMs?: number } = {}): Promise<void> {
+/** Multipart upload of a local file, preserving the web server's typed JSON parts. */
+export async function upload<T>(path: string, filePath: string, options: UploadOptions = {}): Promise<T> {
+  const header = { ...options.headers, ...(await writeHeaders()) }
+  if (options.idempotencyKey) header['Idempotency-Key'] = options.idempotencyKey
+  let response: { statusCode: number; data: unknown; header?: Record<string, unknown>; cookies?: string[] }
+  options.onProgress?.(0)
+  try {
+    if (options.jsonFields?.length) {
+      const boundary = `----yuda${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
+      header['Content-Type'] = `multipart/form-data; boundary=${boundary}`
+      const body = multipart(filePath, boundary, options)
+      response = await raw(apiUrl(path), 'POST', header, body, options.timeoutMs ?? 120000)
+    } else {
+      response = await new Promise<UniApp.UploadFileSuccessCallbackResult>((resolve, reject) => {
+        const task = uni.uploadFile({
+          url: apiUrl(path), filePath, name: options.name ?? 'file', formData: options.formData, header, timeout: options.timeoutMs ?? 120000,
+          success: resolve, fail: reject,
+        })
+        task?.onProgressUpdate?.(event => options.onProgress?.(event.progress))
+      })
+    }
+  } catch (cause) {
+    if (cause instanceof Error && !('errMsg' in cause)) throw cause
+    throw new HttpError('上传中断，尚无法确认是否已提交。', 0, undefined, true)
+  }
+  storeCookies(response)
+  let data: { code?: string; message?: string; detail?: string } = {}
+  try { data = typeof response.data === 'string' ? JSON.parse(response.data || '{}') : response.data as typeof data } catch { /* Non-JSON error page. */ }
+  if (response.statusCode >= 400) {
+    if (response.statusCode === 401) uni.$emit('closet-session-expired')
+    if (response.statusCode === 403 && data?.code === 'PASSWORD_CHANGE_REQUIRED') uni.$emit('closet-password-change-required')
+    throw new HttpError(data?.message || data?.detail || `上传失败 (${response.statusCode})`, response.statusCode, data?.code, response.statusCode >= 500 || response.statusCode === 408)
+  }
+  options.onProgress?.(100)
+  return (response.statusCode === 204 ? undefined : data) as T
+}
+
+function multipart(filePath: string, boundary: string, options: UploadOptions): ArrayBuffer {
+  const pieces: Uint8Array[] = []
+  const append = (value: string) => pieces.push(encodeUtf8(value))
+  const safe = (value: string) => value.replace(/[\r\n"\\]/g, '_')
+  for (const [key, value] of Object.entries(options.formData ?? {})) {
+    append(`--${boundary}\r\nContent-Disposition: form-data; name="${safe(key)}"\r\n${options.jsonFields?.includes(key) ? 'Content-Type: application/json; charset=UTF-8\r\n' : ''}\r\n${value}\r\n`)
+  }
+  const filename = filePath.split('/').pop() || 'photo'
+  const mime = /\.png$/i.test(filename) ? 'image/png' : /\.jpe?g$/i.test(filename) ? 'image/jpeg' : 'application/octet-stream'
+  append(`--${boundary}\r\nContent-Disposition: form-data; name="${safe(options.name ?? 'file')}"; filename="${safe(filename)}"\r\nContent-Type: ${mime}\r\n\r\n`)
+  const file = uni.getFileSystemManager().readFileSync(filePath)
+  if (typeof file === 'string') throw new Error('无法读取照片原始数据。')
+  pieces.push(new Uint8Array(file))
+  append(`\r\n--${boundary}--\r\n`)
+  const bytes = new Uint8Array(pieces.reduce((length, part) => length + part.length, 0))
+  let offset = 0
+  for (const part of pieces) { bytes.set(part, offset); offset += part.length }
+  return bytes.buffer
+}
+
+function encodeUtf8(value: string): Uint8Array {
+  const bytes: number[] = []
+  for (const char of value) {
+    const c = char.codePointAt(0)!
+    if (c < 0x80) bytes.push(c)
+    else if (c < 0x800) bytes.push(0xc0 | c >> 6, 0x80 | c & 63)
+    else if (c < 0x10000) bytes.push(0xe0 | c >> 12, 0x80 | c >> 6 & 63, 0x80 | c & 63)
+    else bytes.push(0xf0 | c >> 18, 0x80 | c >> 12 & 63, 0x80 | c >> 6 & 63, 0x80 | c & 63)
+  }
+  return new Uint8Array(bytes)
+}
+
+/** Streaming UTF-8 decoder for base libraries without a native decoder, including split multibyte characters. */
+function createDecoder() {
+  let pending = new Uint8Array(0)
+  return (buffer: ArrayBuffer, final = false) => {
+    const bytes = new Uint8Array(pending.length + buffer.byteLength)
+    bytes.set(pending); bytes.set(new Uint8Array(buffer), pending.length)
+    let out = '', i = 0
+    while (i < bytes.length) {
+      const start = i, c = bytes[i++]
+      const count = c < 0x80 ? 0 : c >= 0xc2 && c < 0xe0 ? 1 : c >= 0xe0 && c < 0xf0 ? 2 : c >= 0xf0 && c < 0xf5 ? 3 : -1
+      if (count < 0) { out += '\ufffd'; continue }
+      if (bytes.length - i < count) { i = start; break }
+      let point = c & (count === 0 ? 127 : (1 << (6 - count)) - 1)
+      let valid = true
+      for (let j = 0; j < count; j++) {
+        if ((bytes[i] & 0xc0) !== 0x80) { valid = false; break }
+        point = point << 6 | bytes[i++] & 63
+      }
+      if (!valid || count === 1 && point < 0x80 || count === 2 && (point < 0x800 || point >= 0xd800 && point <= 0xdfff) || count === 3 && (point < 0x10000 || point > 0x10ffff)) out += '\ufffd'
+      else out += String.fromCodePoint(point)
+    }
+    pending = bytes.slice(i)
+    if (final && pending.length) { out += '\ufffd'; pending = new Uint8Array(0) }
+    return out
+  }
+}
+
+export type StreamOptions = { timeoutMs?: number; signal?: AbortSignal }
+/** POST with cookie/CSRF, chunked SSE parsing and cancellation of the underlying request task. */
+export async function streamPost(path: string, body: unknown, onEvent: (event: { event: string; data: string }) => void, options: StreamOptions = {}): Promise<void> {
+  const aborted = () => new HttpError('回复已中断。消息可能已经计入额度，请查看会话后再主动重试。', 0, undefined, true)
+  if (options.signal?.aborted) throw aborted()
   const header = { ...(await writeHeaders()), 'Content-Type': 'application/json', Accept: 'text/event-stream' }
+  if (options.signal?.aborted) throw aborted()
   let buffer = ''
-  const decoder = typeof TextDecoder === 'function' ? new TextDecoder('utf-8') : null
-  const feed = (text: string) => {
-    buffer += text
-    let index
+  const decode = createDecoder()
+  const feed = (value: string) => {
+    buffer += value
+    // Normalize only complete CRLF pairs so a pair split between chunks is preserved.
+    buffer = buffer.replace(/\r\n/g, '\n')
+    let index: number
     while ((index = buffer.indexOf('\n\n')) >= 0) {
       const block = buffer.slice(0, index); buffer = buffer.slice(index + 2)
+      if (block.length > 200000) throw new Error('回复数据过大。')
       let event = 'message'; const data: string[] = []
       for (const line of block.split('\n')) {
         if (line.startsWith('event:')) event = line.slice(6).trim()
@@ -175,43 +262,43 @@ export async function streamPost(path: string, body: unknown, onEvent: (event: {
       }
       if (data.length) onEvent({ event, data: data.join('\n') })
     }
+    if (buffer.length > 200000) throw new Error('回复数据过大。')
   }
-  const decode = (bytes: ArrayBuffer) => decoder ? decoder.decode(new Uint8Array(bytes), { stream: true }) : utf8(new Uint8Array(bytes))
   await new Promise<void>((resolve, reject) => {
-    let chunked = false
-    const task = uni.request({
-      url: apiUrl(path), method: 'POST', header, data: body as UniApp.RequestOptions['data'], timeout: options.timeoutMs ?? 300000,
-      // @ts-expect-error WeChat-only option
-      enableChunked: true, responseType: 'arraybuffer',
-      success: response => {
-        storeCookies(response as unknown as { header?: Record<string, unknown> })
-        if (response.statusCode >= 400) {
-          if (response.statusCode === 401) uni.$emit('closet-session-expired')
-          let message = `请求失败 (${response.statusCode})`
-          try { message = (JSON.parse(decode(response.data as ArrayBuffer)) as { message?: string }).message || message } catch { /* keep default */ }
-          reject(new HttpError(message, response.statusCode)); return
-        }
-        if (!chunked && response.data) feed(typeof response.data === 'string' ? response.data : decode(response.data as ArrayBuffer))
-        feed('\n\n'); resolve()
-      },
-      fail: () => reject(new HttpError('连接中断，回复可能不完整。', 0, undefined, true)),
-    }) as unknown as { onChunkReceived?: (cb: (r: { data: ArrayBuffer }) => void) => void }
-    task?.onChunkReceived?.(chunk => { chunked = true; feed(decode(chunk.data)) })
-  })
-}
-
-/** Minimal UTF-8 decoder for base libraries without TextDecoder; multi-byte sequences split across chunks are rare enough here. */
-function utf8(bytes: Uint8Array): string {
-  let out = '', i = 0
-  while (i < bytes.length) {
-    const c = bytes[i++]
-    if (c < 0x80) out += String.fromCharCode(c)
-    else if (c < 0xe0) out += String.fromCharCode(((c & 0x1f) << 6) | (bytes[i++] & 0x3f))
-    else if (c < 0xf0) out += String.fromCharCode(((c & 0x0f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f))
-    else {
-      const point = (((c & 0x07) << 18) | ((bytes[i++] & 0x3f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f)) - 0x10000
-      out += String.fromCharCode(0xd800 + (point >> 10), 0xdc00 + (point & 0x3ff))
+    let chunked = false, settled = false
+    let task: { abort?: () => void; onChunkReceived?: (cb: (r: { data: ArrayBuffer }) => void) => void } | undefined
+    const finish = (error?: unknown) => {
+      if (settled) return
+      settled = true; options.signal?.removeEventListener('abort', abort)
+      if (error) reject(error); else resolve()
     }
-  }
-  return out
+    const abort = () => { finish(aborted()); task?.abort?.() }
+    options.signal?.addEventListener('abort', abort, { once: true })
+    task = uni.request({
+      url: apiUrl(path), method: 'POST', header, data: body as UniApp.RequestOptions['data'], timeout: options.timeoutMs ?? 300000,
+      enableChunked: true, responseType: 'arraybuffer',
+      success: (response: UniApp.RequestSuccessCallbackResult) => {
+        if (settled) return
+        try {
+          storeCookies(response as unknown as { header?: Record<string, unknown>; cookies?: string[] })
+          if (response.statusCode >= 400) {
+            let data: { message?: string; code?: string } = {}
+            try { data = JSON.parse(typeof response.data === 'string' ? response.data : decode(response.data as ArrayBuffer, true)) } catch { /* Keep default message. */ }
+            if (response.statusCode === 401) uni.$emit('closet-session-expired')
+            if (data.code === 'PASSWORD_CHANGE_REQUIRED') uni.$emit('closet-password-change-required')
+            finish(new HttpError(data.message || `请求失败 (${response.statusCode})`, response.statusCode, data.code, response.statusCode >= 500 || response.statusCode === 408)); return
+          }
+          if (!chunked && response.data) feed(typeof response.data === 'string' ? response.data : decode(response.data as ArrayBuffer))
+          feed(decode(new ArrayBuffer(0), true)); finish()
+        } catch (error) { finish(error) }
+      },
+      fail: () => finish(new HttpError('连接中断，回复可能不完整。', 0, undefined, true)),
+    } as UniApp.RequestOptions & { enableChunked: boolean }) as unknown as typeof task
+    task?.onChunkReceived?.(chunk => {
+      if (settled) return
+      try { chunked = true; feed(decode(chunk.data)) }
+      catch (error) { finish(error); task?.abort?.() }
+    })
+    if (options.signal?.aborted) abort()
+  })
 }

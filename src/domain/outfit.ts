@@ -1,4 +1,4 @@
-import { createUuid } from './id.ts'
+import { createUuid } from './id'
 import type { Garment } from '../services/api'
 
 export const OUTFIT_WIDTH = 1080

@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="wot-design-uni/global" />
+// wd-* components are resolved by uni-app easycom (pages.json).
 
 declare module '*.vue' {
   import { DefineComponent } from 'vue'

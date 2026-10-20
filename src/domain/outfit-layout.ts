@@ -1,4 +1,4 @@
-import { normalizeScene, type OutfitElement, type OutfitScene } from './outfit.ts'
+import { normalizeScene, type OutfitElement, type OutfitScene } from './outfit'
 
 // Paint body garments first and outerwear above them, independently of selection order.
 export function orderOutfitLayers(scene: OutfitScene): OutfitScene {
