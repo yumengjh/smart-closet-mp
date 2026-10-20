@@ -1,0 +1,18 @@
+{
+  "description": "鱼搭小程序。导入本仓库根目录即可；先运行 npm run dev:mp-weixin 生成 dist/dev/mp-weixin。",
+  "miniprogramRoot": "dist/dev/mp-weixin/",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "smart-closet-mp",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "ignoreDevUnusedFiles": false
+  },
+  "srcMiniprogramRoot": "dist/dev/mp-weixin/",
+  "libVersion": "3.6.0",
+  "condition": {}
+}
